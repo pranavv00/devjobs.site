@@ -21,26 +21,21 @@ export default function Hero({ jobCount }: { jobCount: number }) {
           <span>{jobCount}+ roles indexed today</span>
         </motion.div>
 
-        {/* Sharp Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-5xl sm:text-6xl md:text-7xl font-semibold tracking-tight mb-6 text-white leading-tight"
+        {/* Sharp Headline - Static for instant LCP */}
+        <h1
+
+          className="text-5xl sm:text-6xl md:text-7xl font-semibold tracking-tight mb-6 text-white leading-tight animate-[fadeIn_0.5s_ease-out]"
         >
           The only job tracker <br className="hidden sm:block" />
           <span className="text-zinc-500">built for developers.</span>
-        </motion.h1>
+        </h1>
 
         {/* Minimal Subhead */}
-        <motion.p
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto mb-10 font-normal leading-relaxed"
+        <p
+          className="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto mb-10 font-normal leading-relaxed animate-[fadeIn_0.7s_ease-out]"
         >
           Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool.
-        </motion.p>
+        </p>
 
         {/* CTA */}
         <motion.div
