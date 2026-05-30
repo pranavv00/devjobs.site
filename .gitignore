@@ -1,0 +1,33 @@
+# Environments
+.env
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data (legacy SQLite files)
+data/
+*.db
+*.sqlite3
+
+# OS
+.DS_Store
+
+# Node / JS
+node_modules/
+.next/
+out/
+build/
+dist/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vercel
+.vercel

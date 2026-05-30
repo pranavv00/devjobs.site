@@ -1,0 +1,8 @@
+python-dotenv
+supabase
+playwright
+beautifulsoup4
+lxml
+groq
+httpx
+pydantic
