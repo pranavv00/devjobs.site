@@ -40,6 +40,33 @@ export default async function JobDetailsPage({ params }: { params: { slug: strin
   const postedDate = new Date(job.posted_at || new Date());
   const validThroughDate = new Date(postedDate.getTime() + 60 * 24 * 60 * 60 * 1000);
 
+  // Dynamic Location Detection for Google Jobs Geo-Targeting
+  const descLower = (job.description || "").toLowerCase() + " " + job.title.toLowerCase();
+  const applicantLocationRequirements: any[] = [];
+  
+  if (descLower.includes("us ") || descLower.includes("united states") || descLower.includes("usa ") || descLower.includes("america")) {
+    applicantLocationRequirements.push({ "@type": "Country", "name": "US" });
+  }
+  if (descLower.includes("uk ") || descLower.includes("united kingdom") || descLower.includes("london") || descLower.includes("britain")) {
+    applicantLocationRequirements.push({ "@type": "Country", "name": "GB" });
+  }
+  if (descLower.includes("canada") || descLower.includes("toronto") || descLower.includes("vancouver")) {
+    applicantLocationRequirements.push({ "@type": "Country", "name": "CA" });
+  }
+  if (descLower.includes("europe") || descLower.includes("eu ")) {
+    applicantLocationRequirements.push({ "@type": "Place", "name": "Europe" });
+  }
+  if (descLower.includes("latam") || descLower.includes("latin america")) {
+    applicantLocationRequirements.push({ "@type": "Place", "name": "Latin America" });
+  }
+
+  // If no specific regions detected, default to broad global reach
+  if (applicantLocationRequirements.length === 0) {
+    applicantLocationRequirements.push({ "@type": "Country", "name": "US" });
+    applicantLocationRequirements.push({ "@type": "Country", "name": "GB" });
+    applicantLocationRequirements.push({ "@type": "Country", "name": "CA" });
+  }
+
   // Generate JSON-LD JobPosting Schema
   const jsonLd = {
     "@context": "https://schema.org/",
@@ -65,10 +92,7 @@ export default async function JobDetailsPage({ params }: { params: { slug: strin
       }
     },
     "jobLocationType": "TELECOMMUTE",
-    "applicantLocationRequirements": {
-      "@type": "Country",
-      "name": "US"
-    },
+    "applicantLocationRequirements": applicantLocationRequirements,
     ...(job.salary ? {
       "baseSalary": {
         "@type": "MonetaryAmount",

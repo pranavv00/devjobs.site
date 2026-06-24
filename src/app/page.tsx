@@ -234,11 +234,14 @@ export default function Home() {
       <section className="container mx-auto px-4 max-w-4xl py-12 mt-12 border-t border-white/5">
         <h2 className="text-xl font-black tracking-tight mb-6 text-zinc-300">Popular Remote Searches</h2>
         <div className="flex flex-wrap gap-3">
-          <a href="/?q=growth+marketing" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Growth Marketing Jobs Remote</a>
-          <a href="/?q=react+native" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Remote React Native Developer Jobs</a>
-          <a href="/?q=spanish" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Spanish Remote Jobs</a>
-          <a href="/?q=technical+lead" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Technical Lead Remote</a>
-          <a href="/?q=data+analyst" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Data Analyst Jobs Remote</a>
+          <Link href="/q/us-remote-jobs" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">US Remote Jobs</Link>
+          <Link href="/q/uk-remote-jobs" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">UK Remote Jobs</Link>
+          <Link href="/q/growth-marketing-remote" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Growth Marketing Remote</Link>
+          <Link href="/q/react-native-remote" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Remote React Native Developer</Link>
+          <Link href="/q/spanish-remote-jobs" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Spanish Remote Jobs</Link>
+          <Link href="/q/technical-lead-remote" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Technical Lead Remote</Link>
+          <Link href="/q/data-analyst-remote" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Data Analyst Jobs Remote</Link>
+          <Link href="/q/frontend-remote-jobs" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Frontend Remote Jobs</Link>
         </div>
       </section>
     </main>
