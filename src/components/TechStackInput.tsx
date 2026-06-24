@@ -3,7 +3,12 @@
 import { useState, useEffect, KeyboardEvent } from "react";
 import { X, Sparkles } from "lucide-react";
 
-export default function TechStackInput() {
+interface TechStackInputProps {
+  showMatchesOnly?: boolean;
+  onToggleMatches?: () => void;
+}
+
+export default function TechStackInput({ showMatchesOnly = false, onToggleMatches }: TechStackInputProps) {
   const [skills, setSkills] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
 
@@ -37,45 +42,55 @@ export default function TechStackInput() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto mb-8 bg-zinc-950/50 backdrop-blur-md border border-purple-500/20 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10">
-        <Sparkles size={100} />
-      </div>
-      <div className="relative z-10">
-        <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="text-purple-400" size={20} />
-          <h3 className="text-lg font-black text-white tracking-tight">Your Tech Stack</h3>
+    <div className="w-full max-w-2xl mx-auto mb-8 relative">
+      <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-500" />
+      <div className="bg-[#111111] border border-white/10 rounded-[1.5rem] p-5 shadow-2xl relative overflow-hidden focus-within:border-purple-500/50 focus-within:ring-1 focus-within:ring-purple-500/50 transition-all">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Sparkles className="text-purple-400" size={16} />
+          <h3 className="text-sm font-bold text-white uppercase tracking-widest">AI Match Engine</h3>
+          <span className="text-xs text-zinc-500 font-medium ml-2">Add your tech stack to score jobs</span>
         </div>
-        <p className="text-sm text-zinc-400 font-medium mb-4">
-          Add your skills to unlock personalized AI Match Scores on every job.
-        </p>
         
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 min-h-[44px] bg-black/50 border border-white/5 rounded-xl px-3 py-2 cursor-text" onClick={() => document.getElementById('tech-input')?.focus()}>
           {skills.map((skill) => (
             <span
               key={skill}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/20 text-purple-300 rounded-full text-xs font-bold tracking-widest uppercase border border-purple-500/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white rounded-lg text-xs font-bold tracking-wide border border-purple-500/30 shadow-sm"
             >
               {skill}
               <button
-                onClick={() => removeSkill(skill)}
-                className="hover:text-white transition-colors focus:outline-none"
+                onClick={(e) => { e.stopPropagation(); removeSkill(skill); }}
+                className="hover:text-red-400 transition-colors focus:outline-none"
                 aria-label={`Remove ${skill}`}
               >
-                <X size={14} />
+                <X size={12} strokeWidth={3} />
               </button>
             </span>
           ))}
-        </div>
 
-        <input
-          type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={skills.length === 0 ? "e.g., React, TypeScript, Python (Press Enter)" : "Add more skills..."}
-          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
-        />
+          <input
+            id="tech-input"
+            type="text"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={skills.length === 0 ? "e.g., React, Python..." : "Add skill..."}
+            className="flex-1 bg-transparent min-w-[120px] px-1 py-1 text-sm text-white placeholder-zinc-600 focus:outline-none transition-all"
+          />
+
+          {skills.length > 0 && onToggleMatches && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleMatches(); }}
+              className={`ml-auto px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                showMatchesOnly 
+                  ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' 
+                  : 'bg-white/10 text-zinc-400 hover:text-white hover:bg-white/20'
+              }`}
+            >
+              {showMatchesOnly ? "Clear Matches" : "Find Matches"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
