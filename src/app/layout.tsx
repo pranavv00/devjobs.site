@@ -8,7 +8,7 @@ import BottomNav from "@/components/BottomNav";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://devjobs.site"),
+  metadataBase: new URL("https://www.devjobs.site"),
   title: "DevJobs | The Only Tech Job Tracker Built For You",
   description: "Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool. Get real roles filtered by AI.",
   keywords: ["remote jobs", "tech jobs", "developer jobs", "remote tech jobs", "software engineering jobs"],

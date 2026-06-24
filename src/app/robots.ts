@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: '/private/',
     },
-    sitemap: 'https://devjobs.site/sitemap.xml',
+    sitemap: 'https://www.devjobs.site/sitemap.xml',
   };
 }
