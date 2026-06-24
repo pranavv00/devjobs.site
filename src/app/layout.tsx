@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import { Analytics } from "@vercel/analytics/next";
 import BottomNav from "@/components/BottomNav";
+import { Sparkles } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -76,6 +77,9 @@ export default function RootLayout({
 
               <div className="flex items-center gap-6 text-sm font-medium text-zinc-400">
                 <Link href="/" className="hover:text-white transition-colors">Discover</Link>
+                <Link href="/matches" className="hover:text-white transition-colors flex items-center gap-1">
+                  For You <Sparkles size={12} className="text-purple-400" />
+                </Link>
                 <Link href="/saved" className="hover:text-white transition-colors">Saved</Link>
               </div>
             </nav>

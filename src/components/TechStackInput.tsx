@@ -2,13 +2,10 @@
 
 import { useState, useEffect, KeyboardEvent } from "react";
 import { X, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-interface TechStackInputProps {
-  showMatchesOnly?: boolean;
-  onToggleMatches?: () => void;
-}
-
-export default function TechStackInput({ showMatchesOnly = false, onToggleMatches }: TechStackInputProps) {
+export default function TechStackInput() {
+  const router = useRouter();
   const [skills, setSkills] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
 
@@ -78,16 +75,12 @@ export default function TechStackInput({ showMatchesOnly = false, onToggleMatche
             className="flex-1 bg-transparent min-w-[120px] px-1 py-1 text-sm text-white placeholder-zinc-600 focus:outline-none transition-all"
           />
 
-          {skills.length > 0 && onToggleMatches && (
+          {skills.length > 0 && (
             <button
-              onClick={(e) => { e.stopPropagation(); onToggleMatches(); }}
-              className={`ml-auto px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                showMatchesOnly 
-                  ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' 
-                  : 'bg-white/10 text-zinc-400 hover:text-white hover:bg-white/20'
-              }`}
+              onClick={(e) => { e.stopPropagation(); router.push('/matches'); }}
+              className="ml-auto px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)] hover:bg-purple-400"
             >
-              {showMatchesOnly ? "Clear Matches" : "Find Matches"}
+              Find Matches
             </button>
           )}
         </div>

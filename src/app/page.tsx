@@ -23,8 +23,6 @@ export default function Home() {
   });
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showMatchesOnly, setShowMatchesOnly] = useState(false);
-  const [userSkills, setUserSkills] = useState<string[]>([]);
 
   const [displayLimit, setDisplayLimit] = useState(9);
   const advancedFiltersCount = advancedFilters.roles.length + advancedFilters.experience.length + (advancedFilters.hasSalary ? 1 : 0);
@@ -35,15 +33,6 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       const q = params.get("q");
       if (q) setSearchQuery(q);
-
-      const saved = JSON.parse(localStorage.getItem("userSkills") || "[]");
-      setUserSkills(saved);
-
-      const handleUpdate = () => {
-        setUserSkills(JSON.parse(localStorage.getItem("userSkills") || "[]"));
-      };
-      window.addEventListener("userSkillsUpdated", handleUpdate);
-      return () => window.removeEventListener("userSkillsUpdated", handleUpdate);
     }
   }, []);
 
@@ -116,15 +105,8 @@ export default function Home() {
       result = result.filter(job => !!job.salary && job.salary.trim() !== "");
     }
 
-    if (showMatchesOnly && userSkills.length > 0) {
-      result = result.filter(job => {
-        const textToSearch = (job.title + " " + job.description + " " + (job.ai_data?.tags?.join(" ") || "")).toLowerCase();
-        return userSkills.some(skill => textToSearch.includes(skill.toLowerCase()));
-      });
-    }
-
     setFilteredJobs(result);
-  }, [searchQuery, activeFilters, advancedFilters, showMatchesOnly, userSkills, jobs]);
+  }, [searchQuery, activeFilters, advancedFilters, jobs]);
 
   const toggleFilter = (id: string) => {
     setActiveFilters(prev => 
@@ -159,10 +141,7 @@ export default function Home() {
       <Hero jobCount={jobs.length} />
       
       <div id="search" className="container mx-auto px-4 mt-12">
-        <TechStackInput 
-          showMatchesOnly={showMatchesOnly} 
-          onToggleMatches={() => setShowMatchesOnly(!showMatchesOnly)} 
-        />
+        <TechStackInput />
         <SearchBar 
           searchQuery={searchQuery} 
           setSearchQuery={setSearchQuery}
