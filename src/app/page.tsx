@@ -138,14 +138,15 @@ export default function Home() {
 
         {/* Results Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div role="status" aria-label="Loading jobs" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <span className="sr-only">Loading jobs...</span>
             {[...Array(6)].map((_, i) => (
               <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-6 h-[300px] animate-pulse" />
             ))}
           </div>
         ) : filteredJobs.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div aria-live="polite" aria-atomic="true" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredJobs.slice(0, displayLimit).map((job, idx) => (
                 <JobCard key={job.id} job={job} index={idx} />
               ))}

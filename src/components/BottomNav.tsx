@@ -15,7 +15,7 @@ export default function BottomNav() {
 
   return (
     <div className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm">
-      <div className="bg-zinc-950/90 backdrop-blur-2xl border border-white/[0.08] flex items-center justify-around py-3 rounded-2xl shadow-2xl">
+      <nav aria-label="Mobile Navigation" className="bg-zinc-950/90 backdrop-blur-2xl border border-white/[0.08] flex items-center justify-around py-3 rounded-2xl shadow-2xl">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -32,7 +32,7 @@ export default function BottomNav() {
             </Link>
           );
         })}
-      </div>
+      </nav>
     </div>
   );
 }

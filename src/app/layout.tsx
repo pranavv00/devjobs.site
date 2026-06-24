@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
@@ -39,6 +39,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -47,13 +54,17 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} min-h-screen bg-[#0a0a0a] text-zinc-100 antialiased selection:bg-zinc-800 flex flex-col relative overflow-x-hidden`}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[100] focus:p-4 focus:bg-white focus:text-black focus:font-bold">
+          Skip to main content
+        </a>
+        
         {/* AssetWise Dot Grid */}
         <div className="fixed inset-0 z-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:24px_24px]" />
 
         <div className="relative z-10 flex flex-col min-h-screen">
           {/* Flat Minimal Navbar */}
-          <div className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6 px-4 pointer-events-none">
-            <nav className="flex items-center gap-8 px-8 py-3.5 rounded-full bg-zinc-900/60 backdrop-blur-xl border border-white/10 shadow-lg pointer-events-auto">
+          <header role="banner" className="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6 px-4 pointer-events-none">
+            <nav aria-label="Main Navigation" className="flex items-center gap-8 px-8 py-3.5 rounded-full bg-zinc-900/60 backdrop-blur-xl border border-white/10 shadow-lg pointer-events-auto">
               <Link href="/" className="flex items-center gap-2 group transition-opacity hover:opacity-80">
                 <div className="font-black text-lg tracking-tighter flex items-center gap-1">
                   <span className="text-blue-500">/_</span>
@@ -68,17 +79,17 @@ export default function RootLayout({
                 <Link href="/saved" className="hover:text-white transition-colors">Saved</Link>
               </div>
             </nav>
-          </div>
+          </header>
 
           {/* Main Content Area */}
-          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-28">
+          <main id="main-content" role="main" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-28">
             {children}
           </main>
 
           <BottomNav />
 
           {/* Clean Flat Footer */}
-          <footer className="py-24 mt-20 border-t border-white/5">
+          <footer role="contentinfo" className="py-24 mt-20 border-t border-white/5">
             <div className="container mx-auto px-4 flex flex-col items-center text-center gap-6">
               <div className="font-black text-xl tracking-tighter flex items-center gap-1">
                 <span className="text-blue-500">/_</span>

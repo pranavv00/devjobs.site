@@ -36,7 +36,9 @@ export default function SearchBar({
           {/* Main Search Input */}
           <div className={`flex items-center gap-3 px-6 h-14 bg-[#111111] border transition-all duration-300 rounded-full ${isScrolled ? "border-white/10 shadow-lg" : "border-white/5"}`}>
             <Search className={`w-5 h-5 transition-colors ${searchQuery ? "text-blue-500" : "text-zinc-500"}`} size={20} />
+            <label htmlFor="search-input" className="sr-only">Search roles, skills, or companies</label>
             <input
+              id="search-input"
               type="text"
               placeholder="Search roles, skills, or companies..."
               value={searchQuery}
@@ -44,7 +46,7 @@ export default function SearchBar({
               className="flex-1 bg-transparent border-none outline-none text-[15px] text-zinc-100 placeholder:text-zinc-600 font-medium h-full"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="p-1.5 hover:bg-white/5 rounded-lg text-zinc-500 transition-colors">
+              <button aria-label="Clear search" onClick={() => setSearchQuery("")} className="p-1.5 hover:bg-white/5 rounded-lg text-zinc-500 transition-colors">
                 <X size={16} />
               </button>
             )}
@@ -65,7 +67,8 @@ export default function SearchBar({
                 <button
                   key={filter.id}
                   onClick={() => toggleFilter(filter.id)}
-                  className={`px-4 py-2.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border ${
+                  aria-pressed={isActive}
+                  className={`px-4 py-2.5 rounded-full text-xs font-medium transition-all whitespace-nowrap border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
                     isActive 
                       ? "bg-white border-white text-black shadow-sm" 
                       : "bg-[#111111] border-white/5 text-zinc-400 hover:border-white/10"

@@ -144,7 +144,9 @@ export default function JobsExplorer() {
             <div className="relative bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl p-2 sm:p-3 flex flex-col md:flex-row gap-3 shadow-2xl">
               <div className="flex-1 relative">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" size={20} />
+                <label htmlFor="search-jobs" className="sr-only">Search jobs</label>
                 <input 
+                  id="search-jobs"
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -228,7 +230,9 @@ export default function JobsExplorer() {
                       <DollarSign size={12} className="text-green-400" /> Salary Range
                     </h4>
                     <div className="flex items-center gap-2">
+                      <label htmlFor="salary-min" className="sr-only">Minimum Salary</label>
                       <input 
+                        id="salary-min"
                         type="number" 
                         value={salaryMin}
                         onChange={(e) => setSalaryMin(e.target.value)}
@@ -236,7 +240,9 @@ export default function JobsExplorer() {
                         className="w-full h-10 px-3 bg-white/5 border border-white/5 rounded-xl text-white placeholder:text-white/10 text-[10px] focus:outline-none focus:border-green-500/50"
                       />
                       <span className="text-gray-600">-</span>
+                      <label htmlFor="salary-max" className="sr-only">Maximum Salary</label>
                       <input 
+                        id="salary-max"
                         type="number" 
                         value={salaryMax}
                         onChange={(e) => setSalaryMax(e.target.value)}
@@ -296,13 +302,14 @@ export default function JobsExplorer() {
 
         {/* Job Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div role="status" aria-label="Loading jobs" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <span className="sr-only">Loading jobs...</span>
             {[...Array(9)].map((_, i) => (
               <div key={i} className="rounded-3xl border border-white/10 bg-white/5 p-6 h-[250px] animate-pulse" />
             ))}
           </div>
         ) : filteredJobs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div aria-live="polite" aria-atomic="true" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJobs.map((job, idx) => (
               <JobCard key={job.id} job={job} index={idx} />
             ))}

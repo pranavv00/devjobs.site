@@ -45,16 +45,16 @@ export default function JobDetailsClient({ job }: { job: Job }) {
       <div className="space-y-6">
         {lines.map((line, i) => {
           const isHeading = line.toUpperCase() === line && line.length < 60 && !line.startsWith("-");
-          if (isHeading) return <h2 key={i} className="text-[14px] font-black text-zinc-100 mt-10 mb-4 uppercase tracking-widest border-l-2 border-blue-600 pl-4">{line}</h2>;
+          if (isHeading) return <h2 key={i} className="text-base font-black text-white mt-10 mb-4 uppercase tracking-widest border-l-2 border-purple-500 pl-4">{line}</h2>;
           if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
             return (
-              <div key={i} className="flex gap-3 items-start text-zinc-400">
-                <span className="text-blue-500 font-bold mt-1.5">•</span>
-                <p className="text-[14px] leading-relaxed font-medium">{line.replace(/^[•\-\*]\s*/, "")}</p>
+              <div key={i} className="flex gap-3 items-start text-zinc-300">
+                <span className="text-purple-500 font-bold mt-1.5">•</span>
+                <p className="text-base leading-relaxed font-medium">{line.replace(/^[•\-\*]\s*/, "")}</p>
               </div>
             );
           }
-          return <p key={i} className="text-zinc-500 text-[14px] leading-relaxed font-medium">{line}</p>;
+          return <p key={i} className="text-zinc-300 text-base leading-relaxed font-medium">{line}</p>;
         })}
       </div>
     );
@@ -106,7 +106,7 @@ export default function JobDetailsClient({ job }: { job: Job }) {
               {renderFormattedDescription(job.description)}
             </div>
 
-            <div className="flex justify-center -mt-8 mb-20 relative z-20">
+            <div className={`flex justify-center mb-20 relative z-20 ${!isExpanded ? '-mt-8' : 'mt-8'}`}>
               <button 
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="px-8 py-3 rounded-xl bg-zinc-900 border border-white/[0.05] text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-white transition-all flex items-center gap-2"

@@ -38,9 +38,9 @@ export default function JobCard({ job, index }: { job: Job; index: number }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index * 0.05, 0.5) }}
-      className="relative group bg-[#111111] hover:bg-[#161616] transition-all border border-white/5 hover:border-white/10 rounded-[1.5rem] p-6 shadow-sm"
+      className="relative group bg-[#111111] hover:bg-[#161616] transition-all border border-white/5 hover:border-white/10 rounded-[1.5rem] p-6 shadow-sm focus-within:ring-2 focus-within:ring-white/20"
     >
-      <Link href={`/jobs/${jobSlug}`} className="block">
+      <div className="block">
         <div className="flex items-start gap-4">
           {/* Logo */}
           <div className="w-12 h-12 flex items-center justify-center bg-black border border-white/5 rounded-2xl text-white font-medium text-lg shrink-0 overflow-hidden shadow-inner">
@@ -50,9 +50,11 @@ export default function JobCard({ job, index }: { job: Job; index: number }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col gap-1 min-w-0">
-                <h3 className="text-lg font-semibold text-zinc-100 group-hover:text-white transition-colors leading-tight line-clamp-2">
-                  {job.title}
-                </h3>
+                <Link href={`/jobs/${jobSlug}`} className="focus:outline-none before:absolute before:inset-0 z-0">
+                  <h3 className="text-lg font-semibold text-zinc-100 group-hover:text-white transition-colors leading-tight line-clamp-2">
+                    {job.title}
+                  </h3>
+                </Link>
                 <div className="flex items-center gap-1.5 text-zinc-500 text-[13px] font-medium truncate mt-1">
                   <span>{job.company}</span>
                   <span className="text-zinc-700">•</span>
@@ -65,7 +67,8 @@ export default function JobCard({ job, index }: { job: Job; index: number }) {
               
               <button 
                 onClick={toggleSave}
-                className={`p-2 rounded-xl transition-all active:scale-95 shrink-0 ${isSaved ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
+                aria-label={isSaved ? "Remove from saved jobs" : "Save job"}
+                className={`relative z-10 p-2 rounded-xl transition-all active:scale-95 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${isSaved ? 'text-white bg-white/10' : 'text-zinc-500 hover:text-white hover:bg-white/5'}`}
               >
                 <Bookmark size={18} fill={isSaved ? "currentColor" : "none"} />
               </button>
@@ -104,7 +107,7 @@ export default function JobCard({ job, index }: { job: Job; index: number }) {
             </div>
           </div>
         </div>
-      </Link>
+      </div>
     </motion.div>
   );
 }
