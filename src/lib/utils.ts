@@ -13,10 +13,7 @@ export function slugify(text: string): string {
 }
 
 export function generateJobSlug(job: { title: string; company: string; id: string }): string {
-  const base = slugify(`${job.title}-${job.company}`);
-  // Use last 4 chars of ID for uniqueness and stability
-  const shortId = job.id.slice(-4);
-  return `${base}-${shortId}`;
+  return slugify(`${job.title}-${job.company}`);
 }
 
 export function formatDisplayDate(dateString: string): string {

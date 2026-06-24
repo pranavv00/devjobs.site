@@ -4,7 +4,7 @@ import { generateJobSlug } from '@/lib/utils';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const jobs = await getJobsServer();
-  const baseUrl = 'https://devjobs.site';
+  const baseUrl = 'https://www.devjobs.site';
 
   const jobUrls = jobs.map((job) => ({
     url: `${baseUrl}/jobs/${generateJobSlug(job)}`,

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { getJobs, Job } from "@/lib/data";
 import Hero from "@/components/Hero";
 import SearchBar from "@/components/SearchBar";
+import TechStackInput from "@/components/TechStackInput";
+import AdvancedFiltersPanel, { AdvancedFilterState } from "@/components/AdvancedFiltersPanel";
 import JobCard from "@/components/JobCard";
 import { Flame, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
@@ -14,9 +16,25 @@ export default function Home() {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({
+    roles: [],
+    experience: [],
+    hasSalary: false
+  });
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [displayLimit, setDisplayLimit] = useState(9);
+  const advancedFiltersCount = advancedFilters.roles.length + advancedFilters.experience.length + (advancedFilters.hasSalary ? 1 : 0);
+
+  // Read URL search params on mount to enable shareable/indexable search links
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("q");
+      if (q) setSearchQuery(q);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -58,8 +76,37 @@ export default function Home() {
       });
     }
 
+    // Advanced Filters Engine
+    if (advancedFilters.roles.length > 0) {
+      result = result.filter(job => {
+        const textToSearch = (job.title + " " + job.description + " " + (job.ai_data?.tags?.join(" ") || "")).toLowerCase();
+        return advancedFilters.roles.some(role => textToSearch.includes(role.toLowerCase()));
+      });
+    }
+
+    if (advancedFilters.experience.length > 0) {
+      result = result.filter(job => {
+        const titleLower = job.title.toLowerCase();
+        const descLower = job.description.toLowerCase();
+        return advancedFilters.experience.some(exp => {
+          const e = exp.toLowerCase();
+          if (e === "junior") return titleLower.includes("junior") || titleLower.includes("entry") || descLower.includes("junior") || descLower.includes("entry level");
+          if (e === "mid-level") return titleLower.includes("mid") || descLower.includes("mid-level") || descLower.includes("mid level");
+          if (e === "senior") return titleLower.includes("senior") || titleLower.includes("sr") || descLower.includes("senior");
+          if (e === "lead") return titleLower.includes("lead") || descLower.includes("lead");
+          if (e === "principal") return titleLower.includes("principal") || descLower.includes("principal");
+          if (e === "manager") return titleLower.includes("manager") || descLower.includes("manager");
+          return false;
+        });
+      });
+    }
+
+    if (advancedFilters.hasSalary) {
+      result = result.filter(job => !!job.salary && job.salary.trim() !== "");
+    }
+
     setFilteredJobs(result);
-  }, [searchQuery, activeFilters, jobs]);
+  }, [searchQuery, activeFilters, advancedFilters, jobs]);
 
   const toggleFilter = (id: string) => {
     setActiveFilters(prev => 
@@ -93,12 +140,15 @@ export default function Home() {
       />
       <Hero jobCount={jobs.length} />
       
-      <div id="search">
+      <div id="search" className="container mx-auto px-4 mt-12">
+        <TechStackInput />
         <SearchBar 
           searchQuery={searchQuery} 
           setSearchQuery={setSearchQuery}
           activeFilters={activeFilters}
           toggleFilter={toggleFilter}
+          openAdvancedFilters={() => setIsAdvancedFiltersOpen(true)}
+          advancedFiltersCount={advancedFiltersCount}
         />
       </div>
 
@@ -173,7 +223,24 @@ export default function Home() {
         )}
       </div>
 
-      {/* Monetization / Footer Ad */}
+      <AdvancedFiltersPanel 
+        isOpen={isAdvancedFiltersOpen}
+        onClose={() => setIsAdvancedFiltersOpen(false)}
+        filters={advancedFilters}
+        setFilters={setAdvancedFilters}
+      />
+
+      {/* SEO Domination: Popular Remote Searches Footer */}
+      <section className="container mx-auto px-4 max-w-4xl py-12 mt-12 border-t border-white/5">
+        <h2 className="text-xl font-black tracking-tight mb-6 text-zinc-300">Popular Remote Searches</h2>
+        <div className="flex flex-wrap gap-3">
+          <a href="/?q=growth+marketing" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Growth Marketing Jobs Remote</a>
+          <a href="/?q=react+native" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Remote React Native Developer Jobs</a>
+          <a href="/?q=spanish" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Spanish Remote Jobs</a>
+          <a href="/?q=technical+lead" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Technical Lead Remote</a>
+          <a href="/?q=data+analyst" className="px-4 py-2 bg-[#111111] hover:bg-white/5 border border-white/5 hover:border-white/20 rounded-lg text-sm text-zinc-400 hover:text-white transition-all">Data Analyst Jobs Remote</a>
+        </div>
+      </section>
     </main>
   );
 }

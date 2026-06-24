@@ -14,12 +14,16 @@ export default function SearchBar({
   searchQuery, 
   setSearchQuery,
   activeFilters,
-  toggleFilter 
+  toggleFilter,
+  openAdvancedFilters,
+  advancedFiltersCount
 }: { 
   searchQuery: string;
   setSearchQuery: (val: string) => void;
   activeFilters: string[];
   toggleFilter: (id: string) => void;
+  openAdvancedFilters: () => void;
+  advancedFiltersCount: number;
 }) {
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -58,9 +62,20 @@ export default function SearchBar({
 
           {/* Minimal Filter Pills */}
           <div className="flex items-center gap-2 mt-4 overflow-x-auto no-scrollbar pb-2">
-            <div className="p-2.5 bg-[#111111] border border-white/5 rounded-full text-zinc-500 hidden sm:block">
+            <button 
+              onClick={openAdvancedFilters}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shrink-0 ${
+                advancedFiltersCount > 0 
+                  ? "bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-500/20" 
+                  : "bg-[#111111] border-white/5 text-zinc-400 hover:text-white hover:border-white/10"
+              }`}
+            >
               <SlidersHorizontal size={14} />
-            </div>
+              Advanced {advancedFiltersCount > 0 && `(${advancedFiltersCount})`}
+            </button>
+            
+            <div className="h-6 w-px bg-white/10 mx-2 shrink-0 hidden sm:block" />
+
             {CHIPS.map((filter) => {
               const isActive = activeFilters.includes(filter.id);
               return (

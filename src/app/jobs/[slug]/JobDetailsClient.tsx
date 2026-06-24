@@ -9,11 +9,33 @@ import Link from "next/link";
 export default function JobDetailsClient({ job }: { job: Job }) {
   const [isSaved, setIsSaved] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [matchScore, setMatchScore] = useState<number | null>(null);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("savedJobs") || "[]");
     setIsSaved(saved.some((s: Job) => s.id === job.id));
   }, [job.id]);
+
+  useEffect(() => {
+    const calculateMatch = () => {
+      const skills = JSON.parse(localStorage.getItem("userSkills") || "[]") as string[];
+      if (skills.length === 0) {
+        setMatchScore(null);
+        return;
+      }
+      const textToSearch = (job.title + " " + job.description + " " + (job.ai_data?.tags?.join(" ") || "")).toLowerCase();
+      let matched = 0;
+      skills.forEach(skill => {
+        if (textToSearch.includes(skill.toLowerCase())) {
+          matched++;
+        }
+      });
+      setMatchScore(Math.round((matched / skills.length) * 100));
+    };
+    calculateMatch();
+    window.addEventListener("userSkillsUpdated", calculateMatch);
+    return () => window.removeEventListener("userSkillsUpdated", calculateMatch);
+  }, [job]);
 
   const toggleSave = () => {
     const saved = JSON.parse(localStorage.getItem("savedJobs") || "[]");
@@ -27,38 +49,7 @@ export default function JobDetailsClient({ job }: { job: Job }) {
     setIsSaved(!isSaved);
   };
 
-  const renderFormattedDescription = (html: string) => {
-    if (!html) return null;
-    const cleanText = html
-      .replace(/<p>/g, "\n")
-      .replace(/<\/p>/g, "\n")
-      .replace(/<li>/g, "- ")
-      .replace(/<\/li>/g, "\n")
-      .replace(/<br\s*\/?>/g, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&");
 
-    const lines = cleanText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-    
-    return (
-      <div className="space-y-6">
-        {lines.map((line, i) => {
-          const isHeading = line.toUpperCase() === line && line.length < 60 && !line.startsWith("-");
-          if (isHeading) return <h2 key={i} className="text-base font-black text-white mt-10 mb-4 uppercase tracking-widest border-l-2 border-purple-500 pl-4">{line}</h2>;
-          if (line.startsWith("-") || line.startsWith("•") || line.startsWith("*")) {
-            return (
-              <div key={i} className="flex gap-3 items-start text-zinc-300">
-                <span className="text-purple-500 font-bold mt-1.5">•</span>
-                <p className="text-base leading-relaxed font-medium">{line.replace(/^[•\-\*]\s*/, "")}</p>
-              </div>
-            );
-          }
-          return <p key={i} className="text-zinc-300 text-base leading-relaxed font-medium">{line}</p>;
-        })}
-      </div>
-    );
-  };
 
   return (
     <main className="min-h-screen pb-32 pt-8 relative">
@@ -93,6 +84,14 @@ export default function JobDetailsClient({ job }: { job: Job }) {
                         <span className="text-blue-500">{job.salary}</span>
                       </>
                     )}
+                    {matchScore !== null && (
+                      <>
+                        <span>•</span>
+                        <span className={matchScore >= 50 ? "text-purple-400" : "text-zinc-400"}>
+                          ⚡️ {matchScore}% Match
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -103,7 +102,10 @@ export default function JobDetailsClient({ job }: { job: Job }) {
 
             <div className={`transition-all duration-700 overflow-hidden relative ${!isExpanded ? 'max-h-[500px]' : 'max-h-none'}`}>
               {!isExpanded && <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black to-transparent z-10" />}
-              {renderFormattedDescription(job.description)}
+              <div 
+                className="prose prose-invert prose-zinc max-w-none prose-p:leading-relaxed prose-p:text-zinc-300 prose-li:text-zinc-300 prose-a:text-blue-500 hover:prose-a:text-blue-400 prose-headings:text-white marker:text-purple-500 prose-li:my-1 prose-ul:my-4 prose-p:my-4 text-base font-medium"
+                dangerouslySetInnerHTML={{ __html: job.description || "No description provided." }} 
+              />
             </div>
 
             <div className={`flex justify-center mb-20 relative z-20 ${!isExpanded ? '-mt-8' : 'mt-8'}`}>

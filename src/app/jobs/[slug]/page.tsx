@@ -36,13 +36,19 @@ export default async function JobDetailsPage({ params }: { params: { slug: strin
     notFound();
   }
 
+  // Calculate validThrough (60 days from posted_at)
+  const postedDate = new Date(job.posted_at || new Date());
+  const validThroughDate = new Date(postedDate.getTime() + 60 * 24 * 60 * 60 * 1000);
+
   // Generate JSON-LD JobPosting Schema
   const jsonLd = {
     "@context": "https://schema.org/",
     "@type": "JobPosting",
     "title": job.title,
-    "description": job.description,
-    "datePosted": job.posted_at,
+    "description": job.description || "View full job description on our site.",
+    "datePosted": job.posted_at || new Date().toISOString(),
+    "validThrough": validThroughDate.toISOString(),
+    "employmentType": ["FULL_TIME"],
     "hiringOrganization": {
       "@type": "Organization",
       "name": job.company,
@@ -51,19 +57,29 @@ export default async function JobDetailsPage({ params }: { params: { slug: strin
       "@type": "Place",
       "address": {
         "@type": "PostalAddress",
+        "streetAddress": "Remote",
         "addressLocality": "Remote",
-        "addressCountry": "Remote"
+        "addressRegion": "Remote",
+        "postalCode": "00000",
+        "addressCountry": "US"
       }
     },
-    "baseSalary": job.salary ? {
-      "@type": "MonetaryAmount",
-      "currency": "USD",
-      "value": {
-        "@type": "QuantitativeValue",
-        "value": job.salary,
-        "unitText": "YEAR"
+    "jobLocationType": "TELECOMMUTE",
+    "applicantLocationRequirements": {
+      "@type": "Country",
+      "name": "US"
+    },
+    ...(job.salary ? {
+      "baseSalary": {
+        "@type": "MonetaryAmount",
+        "currency": "USD",
+        "value": {
+          "@type": "QuantitativeValue",
+          "value": job.salary.replace(/[^0-9.]/g, '') || "0",
+          "unitText": "YEAR"
+        }
       }
-    } : undefined
+    } : {})
   };
 
   return (
