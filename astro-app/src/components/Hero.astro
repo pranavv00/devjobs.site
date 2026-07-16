@@ -1,0 +1,38 @@
+---
+interface Props {
+  jobCount: number;
+}
+
+const { jobCount } = Astro.props;
+---
+
+<div class="relative pt-20 pb-12 sm:pt-32 sm:pb-16 overflow-hidden">
+  <div class="container mx-auto px-4 relative z-10 text-center">
+    <!-- Subtle Badge -->
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-white/10 text-zinc-400 font-medium text-xs mb-8 animate-[fadeIn_0.5s_ease-out]">
+      <div class="w-1.5 h-1.5 rounded-full bg-white/50"></div>
+      <span>{jobCount}+ roles indexed today</span>
+    </div>
+
+    <!-- Sharp Headline - Static for instant LCP -->
+    <h1 class="text-5xl sm:text-6xl md:text-7xl font-semibold tracking-tight mb-6 text-white leading-tight animate-[fadeIn_0.5s_ease-out]">
+      The only job tracker <br class="hidden sm:block" />
+      <span class="text-zinc-500">built for developers.</span>
+    </h1>
+
+    <!-- Minimal Subhead -->
+    <p class="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto mb-10 font-normal leading-relaxed animate-[fadeIn_0.7s_ease-out]">
+      Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool.
+    </p>
+
+    <!-- CTA -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-[fadeIn_0.9s_ease-out]">
+      <a 
+        href="#search"
+        class="w-full sm:w-auto px-8 py-3.5 bg-white text-black text-sm font-medium rounded-full hover:bg-zinc-200 transition-colors shadow-lg flex items-center justify-center gap-2"
+      >
+        Get started <span>→</span>
+      </a>
+    </div>
+  </div>
+</div>

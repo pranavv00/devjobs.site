@@ -1,0 +1,141 @@
+---
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+import '@fontsource/inter/900.css';
+import '@/styles/globals.css';
+import BottomNav from '@/components/BottomNav';
+import { Sparkles } from 'lucide-react';
+
+interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  ogType?: string;
+  ogImage?: string;
+}
+
+const {
+  title = "DevJobs | The Only Tech Job Tracker Built For You",
+  description = "Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool. Get real roles filtered by AI.",
+  canonical = "/",
+  ogType = "website",
+  ogImage = "/og-image.png",
+} = Astro.props;
+
+const siteUrl = "https://www.devjobs.site";
+const canonicalUrl = `${siteUrl}${canonical}`;
+---
+
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <!-- Google tag (gtag.js) -->
+    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-FR7J33XPSW"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-FR7J33XPSW');
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="remote jobs, tech jobs, developer jobs, remote tech jobs, software engineering jobs" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="DevJobs" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={`${siteUrl}${ogImage}`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DevJobs - Remote Tech Jobs" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:creator" content="@pranvv27" />
+
+    <!-- Canonical -->
+    <link rel="canonical" href={canonicalUrl} />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0a] text-zinc-100 antialiased selection:bg-zinc-800 flex flex-col relative overflow-x-hidden" style="font-family: 'Inter', sans-serif;">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[100] focus:p-4 focus:bg-white focus:text-black focus:font-bold">
+      Skip to main content
+    </a>
+    
+    <!-- Dot Grid -->
+    <div class="fixed inset-0 z-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+    <div class="relative z-10 flex flex-col min-h-screen">
+      <!-- Flat Minimal Navbar -->
+      <header role="banner" class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-6 px-4 pointer-events-none">
+        <nav aria-label="Main Navigation" class="flex items-center gap-8 px-8 py-3.5 rounded-full bg-zinc-900/60 backdrop-blur-xl border border-white/10 shadow-lg pointer-events-auto">
+          <a href="/" class="flex items-center gap-2 group transition-opacity hover:opacity-80">
+            <div class="font-black text-lg tracking-tighter flex items-center gap-1">
+              <span class="text-blue-500">/_</span>
+              <span>devjobs</span>
+            </div>
+          </a>
+
+          <div class="h-4 w-px bg-white/10 hidden sm:block"></div>
+
+          <div class="flex items-center gap-6 text-sm font-medium text-zinc-400">
+            <a href="/" class="hover:text-white transition-colors">Discover</a>
+            <a href="/matches" class="hover:text-white transition-colors flex items-center gap-1">
+              For You <Sparkles size={12} className="text-purple-400" />
+            </a>
+            <a href="/saved" class="hover:text-white transition-colors">Saved</a>
+          </div>
+        </nav>
+      </header>
+
+      <!-- Main Content Area -->
+      <main id="main-content" role="main" class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-28">
+        <slot />
+      </main>
+
+      <BottomNav client:idle />
+
+      <!-- Clean Flat Footer -->
+      <footer role="contentinfo" class="py-24 mt-20 border-t border-white/5">
+        <div class="container mx-auto px-4 flex flex-col items-center text-center gap-6">
+          <div class="font-black text-xl tracking-tighter flex items-center gap-1">
+            <span class="text-blue-500">/_</span>
+            <span>devjobs</span>
+          </div>
+          
+          <div class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-sm font-medium text-zinc-500">
+            <a href="https://github.com/pranavv00" target="_blank" class="hover:text-white transition-colors">GitHub</a>
+            <a href="https://x.com/pranvv27" target="_blank" class="hover:text-white transition-colors">Twitter</a>
+            <span class="hidden sm:inline opacity-20">•</span>
+            <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+            <a href="/terms" class="hover:text-white transition-colors">Terms</a>
+          </div>
+          
+          <p class="text-sm font-normal text-zinc-600 mt-4">
+            © {new Date().getFullYear()} All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Vercel Analytics -->
+    <script>
+      import { inject } from '@vercel/analytics';
+      inject();
+    </script>
+  </body>
+</html>

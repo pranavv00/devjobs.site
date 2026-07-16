@@ -1,0 +1,15 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import JobsExplorerClient from '@/components/JobsExplorerClient';
+import { getJobs } from '@/lib/data';
+
+const jobs = getJobs();
+---
+
+<BaseLayout
+  title="Remote Tech Jobs | DevJobs"
+  description="Browse remote developer jobs. Filter by role, salary, and experience."
+  canonical="/jobs"
+>
+  <JobsExplorerClient initialJobs={jobs} client:load />
+</BaseLayout>

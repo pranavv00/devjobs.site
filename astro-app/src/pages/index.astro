@@ -1,0 +1,37 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Hero from '@/components/Hero.astro';
+import HomePageClient from '@/components/HomePageClient';
+import { getJobs } from '@/lib/data';
+
+const jobs = getJobs();
+const jobCount = jobs.length;
+
+// WebSite JSON-LD Schema
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "DevJobs",
+  "url": "https://devjobs.site",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://devjobs.site/jobs?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+};
+---
+
+<BaseLayout
+  title="DevJobs | The Only Tech Job Tracker Built For You"
+  description="Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool. Get real roles filtered by AI."
+  canonical="/"
+>
+  <main class="min-h-screen pb-32">
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <Hero jobCount={jobCount} />
+    <HomePageClient initialJobs={jobs} client:load />
+  </main>
+</BaseLayout>

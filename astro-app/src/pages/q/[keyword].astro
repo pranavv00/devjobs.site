@@ -1,0 +1,114 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import JobCard from '@/components/JobCard';
+import { getJobs } from '@/lib/data';
+
+export function getStaticPaths() {
+  const TOP_KEYWORDS = [
+    "us-remote-jobs",
+    "uk-remote-jobs",
+    "europe-remote-jobs",
+    "growth-marketing-remote",
+    "react-native-remote",
+    "spanish-remote-jobs",
+    "technical-lead-remote",
+    "data-analyst-remote",
+    "frontend-remote-jobs",
+    "backend-remote-jobs",
+    "react-remote-jobs",
+    "python-remote-jobs",
+    "node-remote-jobs"
+  ];
+  return TOP_KEYWORDS.map((keyword) => ({
+    params: { keyword },
+  }));
+}
+
+
+const { keyword } = Astro.params;
+const jobs = getJobs();
+const searchTerms = keyword!.toLowerCase().split('-');
+
+// Server-side filtering for maximum SEO indexability
+const filteredJobs = jobs.filter(job => {
+  const textToSearch = (job.title + " " + job.description + " " + (job.ai_data?.tags?.join(" ") || "")).toLowerCase();
+  
+  // Custom logic for geo-targeting
+  if (searchTerms.includes("us") || searchTerms.includes("united")) {
+     if (!textToSearch.includes("us ") && !textToSearch.includes("united states") && !textToSearch.includes("usa") && !textToSearch.includes("america") && !textToSearch.includes("worldwide") && !textToSearch.includes("global")) {
+       return false;
+     }
+  }
+  if (searchTerms.includes("uk")) {
+     if (!textToSearch.includes("uk ") && !textToSearch.includes("united kingdom") && !textToSearch.includes("london") && !textToSearch.includes("britain") && !textToSearch.includes("worldwide") && !textToSearch.includes("global")) {
+       return false;
+     }
+  }
+  
+  // General keyword matching
+  const coreKeywords = searchTerms.filter(k => !["remote", "jobs", "in", "for", "us", "uk", "europe"].includes(k));
+  if (coreKeywords.length > 0) {
+    return coreKeywords.some(kw => textToSearch.includes(kw));
+  }
+  
+  return true;
+});
+
+const displayTitle = keyword!.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+const cleanKeyword = keyword!.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+
+const title = `Find The Best ${cleanKeyword} | DevJobs`;
+const description = `Discover the latest ${cleanKeyword} on DevJobs. We hand-curate top remote tech jobs for developers, designers, and marketers updated daily.`;
+
+// Generate WebPage JSON-LD
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": `${displayTitle} on DevJobs`,
+  "description": `Browse ${filteredJobs.length} hand-picked ${displayTitle}.`,
+  "url": `https://www.devjobs.site/q/${keyword}`
+};
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  canonical={`/q/${keyword}`}
+>
+  <main class="min-h-screen pb-32 relative">
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    
+    <!-- Sleek Hero Section -->
+    <div class="bg-[#111111] border-b border-white/5 pt-16 pb-12 mb-12">
+      <div class="container mx-auto px-4 max-w-6xl">
+        <a href="/" class="inline-flex items-center gap-2 text-zinc-600 hover:text-white mb-8 transition-colors font-black uppercase tracking-widest text-[10px] group">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="group-hover:-translate-x-1 transition-transform"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          <span>Back to Discovery</span>
+        </a>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight">
+          The Best <span class="text-purple-400">{displayTitle}</span>
+        </h1>
+        <p class="text-zinc-400 text-lg md:text-xl font-medium max-w-2xl leading-relaxed">
+          We've found {filteredJobs.length} active roles matching your search. Skip the spreadsheets and apply directly to the best remote tech companies today.
+        </p>
+      </div>
+    </div>
+
+    <div class="container mx-auto px-4 max-w-6xl">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredJobs.map((job, idx) => (
+          <JobCard job={job} index={idx} client:visible />
+        ))}
+        {filteredJobs.length === 0 && (
+          <div class="col-span-full py-24 text-center">
+            <h3 class="text-2xl font-bold mb-2">No active jobs found right now.</h3>
+            <p class="text-zinc-500">Try checking back tomorrow or browse our main discovery engine.</p>
+            <a href="/" class="inline-block mt-8 px-8 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-sm font-black uppercase tracking-widest transition-all">
+              View All Jobs
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  </main>
+</BaseLayout>

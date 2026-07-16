@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+  --accent: #a855f7;
+  --accent-rgb: 168, 85, 247;
+  --accent-foreground: #ffffff;
+  --accent-glow: rgba(168, 85, 247, 0.15);
+  
+  --card: rgba(255, 255, 255, 0.05);
+  --card-rgb: 255, 255, 255;
+  --card-foreground: #ffffff;
+  --card-border: rgba(255, 255, 255, 0.1);
+  
+  --radius-header: 2rem;
+  --radius-card: 1.5rem;
+  
+  --primary-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 50%, #3b82f6 100%);
+}
+
+@layer base {
+  body {
+    @apply text-foreground bg-background selection:bg-purple-500/30 selection:text-white;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    background-color: rgba(var(--accent-rgb), 0.3);
+    color: inherit;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply relative overflow-hidden backdrop-blur-xl border border-card-border shadow-sm transition-all duration-300;
+    background-color: rgba(var(--card-rgb), 0.7);
+  }
+  
+  .glass-card:hover {
+    @apply shadow-xl -translate-y-1;
+    border-color: var(--accent);
+    background-color: rgba(var(--card-rgb), 0.85);
+  }
+
+  .glow-mesh {
+    @apply absolute -z-10 blur-[120px] opacity-50 rounded-full;
+    background: var(--primary-gradient);
+  }
+
+  .btn-premium {
+    @apply relative px-6 py-3 rounded-full font-semibold text-white transition-all active:scale-95 overflow-hidden;
+    background: var(--primary-gradient);
+  }
+
+  .btn-premium::after {
+    @apply content-[''] absolute inset-0 opacity-0 transition-opacity duration-300 bg-white/20;
+  }
+
+  .btn-premium:hover::after {
+    @apply opacity-100;
+  }
+
+  .nav-blur {
+    @apply sticky top-4 z-50 mx-auto max-w-7xl px-4 py-3 rounded-header border border-card-border backdrop-blur-md;
+    background-color: rgba(var(--card-rgb), 0.8);
+  }
+
+  .badge-tech {
+    @apply px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase text-accent border;
+    background-color: rgba(var(--accent-rgb), 0.1);
+    border-color: rgba(var(--accent-rgb), 0.2);
+  }
+}
+
+.text-gradient {
+  @apply bg-clip-text text-transparent;
+  background-image: var(--primary-gradient);
+}
+
+.logo-glow {
+  @apply transition-all duration-300;
+}
+
+.logo-glow:hover {
+  filter: drop-shadow(0 0 15px rgba(var(--accent-rgb), 0.6));
+  transform: translateY(-1px) rotate(2deg);
+}
