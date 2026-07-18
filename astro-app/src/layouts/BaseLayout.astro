@@ -20,13 +20,15 @@ interface Props {
 const {
   title = "DevJobs | The Only Tech Job Tracker Built For You",
   description = "Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool. Get real roles filtered by AI.",
-  canonical = "/",
+  canonical,
   ogType = "website",
   ogImage = "/og-image.png",
 } = Astro.props;
 
 const siteUrl = "https://www.devjobs.site";
-const canonicalUrl = `${siteUrl}${canonical}`;
+const path = canonical || Astro.url.pathname;
+const cleanPath = path === "/" ? "" : path.endsWith("/") ? path.slice(0, -1) : path;
+const canonicalUrl = `${siteUrl}${cleanPath || "/"}`;
 ---
 
 <!DOCTYPE html>

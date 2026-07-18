@@ -35,9 +35,6 @@ export const metadata: Metadata = {
     description: "Start tracking every remote tech job with a purpose-built tool.",
     creator: "@pranvv27",
   },
-  alternates: {
-    canonical: "/",
-  },
 };
 
 export const viewport: Viewport = {
