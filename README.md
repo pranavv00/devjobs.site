@@ -1,4 +1,4 @@
-# DevJobsHub
+# devjobs.site
 
 > High-performance automated job aggregation — scrapes top remote developer roles from five sources and serves them on a premium Next.js interface, refreshed every 12 hours.
 
