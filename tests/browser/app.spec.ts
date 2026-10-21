@@ -80,7 +80,7 @@ test('corrupt storage and blocked writes do not crash the interface', async ({ p
     };
   });
   await page.locator('.job-card').first().getByRole('button').click();
-  await expect(page.getByRole('alert')).toContainText('Could not save');
+  await expect(page.locator('.field-error[role="alert"]')).toContainText('Could not save');
 });
 test('skills and detail pages work on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

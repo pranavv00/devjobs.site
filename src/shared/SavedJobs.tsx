@@ -109,6 +109,7 @@ export default function SavedJobs() {
                         <label>
                           <span className="sr-only">Status for {job.title}</span>
                           <select
+                            aria-label={`Status for ${job.title}`}
                             value={column.id}
                             onChange={(event) => move(job.id, event.target.value as JobStatus)}
                           >

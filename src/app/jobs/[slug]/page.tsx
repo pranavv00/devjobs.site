@@ -6,15 +6,14 @@ import { breadcrumbSchema, jobSchema, serializeJsonLd } from '@/shared/seo';
 import JobDetails from '@/shared/JobDetails';
 export const revalidate = 3600;
 type Props = { params: Promise<{ slug: string }> };
+export const dynamicParams = false;
 export function generateStaticParams() {
-  return getAllJobs()
-    .slice(0, 30)
-    .map((job) => ({ slug: job.slug }));
+  return getAllJobs().map((job) => ({ slug: job.slug }));
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params,
     job = findJob(slug);
-  if (!job) return { title: 'Job not found', robots: { index: false, follow: true } };
+  if (!job) notFound();
   const title = `${job.title} at ${job.company}`;
   const description =
     `${title}. ${job.salary ? `Salary: ${job.salary}. ` : ''}${job.excerpt}`.slice(0, 160);
