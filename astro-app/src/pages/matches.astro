@@ -1,17 +1,8 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import MatchesClient from '@/components/MatchesClient';
-import { getJobs } from '@/lib/data';
-
-const jobs = getJobs();
+import Matches from '@shared/Matches';
+import { getActiveJobs, toSummary } from '@shared/data';
 ---
-
-<BaseLayout
-  title="For You - AI Matched Jobs | DevJobs"
-  description="Your personalized feed of remote tech jobs dynamically matched to your specific skills and tech stack."
-  canonical="/matches"
->
-  <main class="min-h-screen pt-12">
-    <MatchesClient initialJobs={jobs} client:load />
-  </main>
+<BaseLayout title="Jobs for your skills | DevJobs" canonical="/matches" noindex>
+  <Matches jobs={getActiveJobs().map(toSummary)} client:load />
 </BaseLayout>

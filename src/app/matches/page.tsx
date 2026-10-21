@@ -1,18 +1,14 @@
-import { getJobsServer } from "@/lib/data-server";
-import MatchesClient from "./MatchesClient";
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "For You - AI Matched Jobs | DevJobs",
-  description: "Your personalized feed of remote tech jobs dynamically matched to your specific skills and tech stack.",
-};
-
-export default async function MatchesPage() {
-  const jobs = await getJobsServer();
-  
-  return (
-    <main className="min-h-screen pt-12">
-      <MatchesClient initialJobs={jobs} />
-    </main>
-  );
+import { pageMetadata } from '@/lib/metadata';
+import { getActiveJobs, toSummary } from '@/shared/data';
+import Matches from '@/shared/Matches';
+export const revalidate = 3600;
+export const metadata = pageMetadata({
+  title: 'Jobs for your skills',
+  description:
+    'Find remote jobs that mention your skills. Keyword matching is local to your browser.',
+  path: '/matches',
+  noindex: true,
+});
+export default function MatchesPage() {
+  return <Matches jobs={getActiveJobs().map(toSummary)} />;
 }

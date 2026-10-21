@@ -1,298 +1,233 @@
+"""Public-feed adapters. No accounts, page scraping, or browser automation required."""
 import logging
-import httpx
-import re
-import time
-from bs4 import BeautifulSoup
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict
+from contextlib import nullcontext
+from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
-from agent.config import WEWORKREMOTELY_URL, USER_AGENT
+from bs4 import BeautifulSoup
+
+from agent.config import DEFAULT_MAX_PAGES, WEWORKREMOTELY_URLS
+from agent.http import FeedClient
+from agent.normalize import (
+    applicant_countries, clean_html, is_developer_role, normalize_job,
+    parse_relative_date, salary_details, source_identifier, strings, text, valid_job,
+)
 
 logger = logging.getLogger(__name__)
 
-def parse_relative_date(text: str) -> str:
-    """Robust parser that converts strings like '2 days ago', '1 week ago',
-    or RSS dates into standard ISO timestamps. Returns current time if unparseable."""
-    if not text:
-        return datetime.now(timezone.utc).isoformat()
-    
-    now = datetime.now(timezone.utc)
-    text = text.lower().strip()
 
-    # Match relative patterns
-    match = re.search(r'(\d+)\s*(day|week|month|hour|minute)s?\s*ago', text)
-    if match:
-        val = int(match.group(1))
-        unit = match.group(2)
-        if unit == "day":
-            delta = timedelta(days=val)
-        elif unit == "week":
-            delta = timedelta(weeks=val)
-        elif unit == "month":
-            delta = timedelta(days=val * 30)
-        elif unit == "hour":
-            delta = timedelta(hours=val)
-        elif unit == "minute":
-            delta = timedelta(minutes=val)
+class PaginationLimit(Exception):
+    """The configured budget was reached; the fetched pages remain useful."""
+
+
+def records(payload, key=None):
+    value = payload.get(key) if key and isinstance(payload, dict) else payload if key is None else None
+    if not isinstance(value, list):
+        raise ValueError(f"Expected a list in {key or 'response'}")
+    for item in value:
+        if isinstance(item, dict):
+            yield item
         else:
-            delta = timedelta(0)
-        return (now - delta).isoformat()
-    
-    # Handle "Today" or "Yesterday"
-    if "today" in text:
-        return now.isoformat()
-    if "yesterday" in text:
-        return (now - timedelta(days=1)).isoformat()
-    
-    # Handle standard RSS/HTTP formats (e.g., Wed, 25 Mar 2026 20:21:42 +0000)
-    # Using multiple common formats
-    formats = [
-        "%a, %d %b %Y %H:%M:%S %z",
-        "%a, %d %b %Y %H:%M:%S %Z",
-        "%Y-%m-%dT%H:%M:%S%z",
-        "%Y-%m-%d %H:%M:%S",
-        "%b %d, %Y"
-    ]
-    
-    for fmt in formats:
+            logger.warning("Skipping a non-object feed record")
+
+
+def cursor_pages(client, url, params, max_pages):
+    seen = set()
+    for _ in range(max_pages):
+        data = client.json(url, params=params)
+        if not isinstance(data, dict):
+            raise ValueError("Expected a JSON feed object")
+        yield data
+        cursor = data.get("nextCursor")
+        if not cursor:
+            if data.get("hasMore") is True:
+                raise ValueError("Feed says more pages exist but omitted its cursor")
+            return
+        if not isinstance(cursor, str) or cursor in seen:
+            raise ValueError("Source returned an invalid or repeated pagination cursor")
+        seen.add(cursor)
+        params = {**params, "cursor": cursor}
+    raise PaginationLimit(f"Stopped at {max_pages} pages; raise --max-pages for more coverage")
+
+
+def fetch_weworkremotely(client, max_pages, now):
+    failures = 0
+    for url in WEWORKREMOTELY_URLS:
         try:
-            dt = datetime.strptime(text, fmt) if "%z" not in fmt and "%Z" not in fmt else datetime.strptime(text, fmt)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.isoformat()
-        except:
+            soup = BeautifulSoup(client.get(url).content, "xml")
+            if not soup.find("rss"):
+                raise ValueError("Expected an RSS feed")
+            for item in soup.find_all("item"):
+                def value(name):
+                    node = item.find(name)
+                    return node.get_text() if node else ""
+                title = value("title")
+                company, separator, title_part = title.partition(": ")
+                yield normalize_job(
+                    "WeWorkRemotely", title=title_part if separator else title,
+                    company=company if separator else value("company"), url=value("link"),
+                    description=value("encoded") or value("description"), posted_at=value("pubDate"),
+                    source_id=value("guid"), location=value("region") or value("location"),
+                    employment_type=value("type"), salary=value("salary"),
+                    categories=["DevOps" if "devops" in url else "Programming"],
+                    tags=[node.get_text() for node in item.find_all("category")], now=now,
+                )
+        except Exception:
+            failures += 1
+            logger.exception("WWR feed failed: %s", url)
+    if failures:
+        raise ValueError(f"{failures} WWR category feed(s) failed")
+
+
+def fetch_remotive(client, max_pages, now):
+    data = client.json("https://remotive.com/api/remote-jobs")
+    for item in records(data, "jobs"):
+        yield normalize_job(
+            "Remotive", title=item.get("title"), company=item.get("company_name"), url=item.get("url"),
+            description=item.get("description"), posted_at=item.get("publication_date"),
+            salary=text(item.get("salary")), location=item.get("candidate_required_location"),
+            source_id=source_identifier(item.get("id")), tags=item.get("tags"), categories=[item.get("category", "")],
+            employment_type=item.get("job_type"), company_logo=item.get("company_logo"),
+            allow_syndication=False, now=now,
+        )
+
+
+def fetch_remoteok(client, max_pages, now):
+    for item in records(client.json("https://remoteok.com/api")):
+        if "position" not in item:  # Legal notice; do not assume it is always index zero.
             continue
+        yield normalize_job(
+            "RemoteOK", title=item.get("position"), company=item.get("company"), url=item.get("url"),
+            description=item.get("description"), posted_at=item.get("date") or item.get("epoch"),
+            source_id=source_identifier(item.get("id")), tags=item.get("tags"), location=item.get("location"),
+            company_logo=item.get("company_logo") or item.get("logo"), employment_type=item.get("employment_type"),
+            **salary_details(item.get("salary_min"), item.get("salary_max"), item.get("salary_currency"), item.get("salary_period")),
+            now=now,
+        )
 
-    return now.isoformat()
 
-def clean_html(html_content: str) -> str:
-    """Cleans HTML while preserving safe formatting tags for a premium UI."""
-    if not html_content:
-        return ""
-    
-    soup = BeautifulSoup(html_content, "html.parser")
-    if not bool(soup.find()):
-        paragraphs = html_content.split('\n\n')
-        html_content = "".join("<p>{}</p>".format(p.strip().replace('\n', '<br/>')) for p in paragraphs if p.strip())
-        soup = BeautifulSoup(html_content, "html.parser")
+def fetch_workingnomads(client, max_pages, now):
+    for item in records(client.json("https://www.workingnomads.com/api/exposed_jobs/")):
+        yield normalize_job(
+            "WorkingNomads", title=item.get("title"), company=item.get("company_name"), url=item.get("url"),
+            description=item.get("description"), posted_at=item.get("pub_date"),
+            location=item.get("location"), tags=item.get("tags"), categories=[item.get("category_name", "")],
+            salary=text(item.get("salary")), employment_type=item.get("job_type"), now=now,
+        )
 
-    for element in soup(["script", "style", "iframe", "embed", "object", "form"]):
-        element.decompose()
 
-    allowed_tags = ["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "u", "h1", "h2", "h3", "h4"]
-    for tag in soup.find_all(True):
-        if tag.name not in allowed_tags:
-            tag.unwrap()
-        else:
-            tag.attrs = {}
+def fetch_jobicy(client, max_pages, now):
+    # Fetch all categories once and filter locally so changing taxonomy slugs do not lose jobs.
+    for data in cursor_pages(client, "https://jobicy.com/api/jobs", {"count": 100}, max_pages):
+        for item in records(data, "jobs"):
+            legacy_salary = "salaryMin" not in item and "salaryMax" not in item
+            yield normalize_job(
+                "Jobicy", title=item.get("jobTitle"), company=item.get("companyName"), url=item.get("url"),
+                description=item.get("jobDescription"), posted_at=item.get("pubDate"), source_id=source_identifier(item.get("id")),
+                location=item.get("jobGeo"), employment_type=item.get("jobType"),
+                experience_level=text(item.get("jobLevel")), categories=item.get("jobIndustry"),
+                company_logo=item.get("companyLogo"), source_excerpt=text(item.get("jobExcerpt")),
+                **salary_details(
+                    item.get("salaryMin", item.get("annualSalaryMin")), item.get("salaryMax", item.get("annualSalaryMax")),
+                    item.get("salaryCurrency"), "annual" if legacy_salary else item.get("salaryPeriod"),
+                ), now=now,
+            )
 
-    clean_html = str(soup)
-    clean_html = re.sub(r'\n\s*\n', '\n', clean_html)
-    limit = 15000
-    if len(clean_html) > limit:
-        clean_html = clean_html[:limit] + "... [Description truncated]"
-    return clean_html
 
-def extract_salary_heuristic(text: str) -> str:
-    """Heuristic regex to find salary patterns in raw text."""
-    if not text:
-        return ""
-    # Clean tags for searching
-    clean = re.sub(r'<[^>]*>', ' ', text)
-    
-    # Range pattern: $100,000 - $150,000 or 80k - 120k
-    # Handles $, €, £
-    patterns = [
-        r'([$€£]\d{2,3}(?:,\d{3})*(?:\s*-\s*[$€£]\d{2,3}(?:,\d{3})*))',
-        r'([$€£]\d{1,3}k(?:\s*-\s*[$€£]\d{1,3}k))',
-        r'([$€£]\d{2,3}(?:,\d{3})*)',
-        r'(\d{2,3}(?:,\d{3})*\s*[$€£])'
-    ]
-    
-    for p in patterns:
-        match = re.search(p, clean, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-    return ""
+def fetch_himalayas(client, max_pages, now):
+    for data in cursor_pages(client, "https://himalayas.app/jobs/api", {"limit": 20}, max_pages):
+        for item in records(data, "jobs"):
+            locations = strings(item.get("locationRestrictions"))
+            offsets = item.get("timezoneRestrictions")
+            offsets = list(dict.fromkeys(str(x) for x in offsets if isinstance(x, (str, int, float)) and not isinstance(x, bool))) if isinstance(offsets, list) else []
+            guid = item.get("guid", "")
+            # guid is the canonical Himalayas listing, applicationLink is the required Apply URL.
+            yield normalize_job(
+                "Himalayas", title=item.get("title"), company=item.get("companyName"), url=guid,
+                description=item.get("description"), posted_at="", updated_at=item.get("pubDate"),
+                valid_through=item.get("expiryDate"), source_id=guid,
+                location=", ".join(locations) if locations else "No country restriction · check time zones",
+                applicant_countries=applicant_countries(locations), timezone_restrictions=offsets,
+                apply_url=item.get("applicationLink"), company_logo=item.get("companyLogo"),
+                employment_type=item.get("employmentType"),
+                categories=strings(item.get("categories")) + strings(item.get("parentCategories")),
+                source_excerpt=text(item.get("excerpt")), allow_syndication=False,
+                **salary_details(item.get("minSalary"), item.get("maxSalary"), item.get("currency"), item.get("salaryPeriod") or "annual"),
+                now=now,
+            )
 
-def fetch_weworkremotely() -> List[Dict]:
-    """Scrapes WeWorkRemotely RSS feed to get all latest remote jobs."""
+
+def fetch_arbeitnow(client, max_pages, now, uk=False):
+    endpoint = f"https://www.arbeitnow.{'co.uk' if uk else 'com'}/api/job-board-api"
+    for page in range(1, max_pages + 1):
+        data = client.json(endpoint, params={"page": page})
+        for item in records(data, "data"):
+            yield normalize_job(
+                "Arbeitnow UK" if uk else "Arbeitnow", title=item.get("title"), company=item.get("company_name"),
+                url=item.get("url"), description=item.get("description"), posted_at=item.get("created_at"),
+                source_id=text(item.get("slug")), location=item.get("location"), tags=item.get("tags"),
+                employment_type=item.get("job_types"), remote=item.get("remote") is True,
+                salary=text(item.get("salary")), now=now,
+            )
+        links = data.get("links")
+        if not isinstance(links, dict):
+            raise ValueError("Arbeitnow response omitted pagination links")
+        following = links.get("next")
+        if not following:
+            return
+        # Do not request arbitrary URLs from a remote response. Build our own numbered pages.
+        if not isinstance(following, str) or urlsplit(following).netloc != urlsplit(endpoint).netloc:
+            raise ValueError("Unexpected Arbeitnow pagination host")
+        if not data.get("data"):
+            raise ValueError("Empty Arbeitnow page advertises a next page")
+    raise PaginationLimit(f"Stopped at {max_pages} pages; raise --max-pages for more coverage")
+
+
+def fetch_arbeitnow_uk(client, max_pages, now):
+    yield from fetch_arbeitnow(client, max_pages, now, uk=True)
+
+
+SOURCES = {
+    "WeWorkRemotely": fetch_weworkremotely, "Remotive": fetch_remotive,
+    "RemoteOK": fetch_remoteok, "WorkingNomads": fetch_workingnomads,
+    "Jobicy": fetch_jobicy, "Himalayas": fetch_himalayas,
+    "Arbeitnow": fetch_arbeitnow, "Arbeitnow UK": fetch_arbeitnow_uk,
+}
+
+
+def scrape_all_jobs(sources=None, max_pages=DEFAULT_MAX_PAGES, report=None, client=None, now=None):
+    now = now or datetime.now(timezone.utc)
+    selected = list(SOURCES) if sources is None else sources
+    if not 1 <= max_pages <= 50:
+        raise ValueError("max_pages must be between 1 and 50")
+    if not selected or any(name not in SOURCES for name in selected):
+        raise ValueError("Choose at least one known source")
+    report = report if report is not None else {}
     jobs = []
-    try:
-        headers = {"User-Agent": USER_AGENT}
-        response = httpx.get(WEWORKREMOTELY_URL, headers=headers, timeout=15)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "xml")
-        items = soup.find_all("item")
-        
-        for item in items:
-            title = item.find("title").text if item.find("title") else ""
-            url = item.find("link").text if item.find("link") else ""
-            description_html = item.find("description").text if item.find("description") else ""
-            pub_date = item.find("pubDate").text if item.find("pubDate") else ""
-            
-            company = "Unknown"
-            job_title = title
-            if ": " in title:
-                parts = title.split(": ", 1)
-                company = parts[0]
-                job_title = parts[1]
-                
-            jobs.append({
-                "title": job_title,
-                "company": company,
-                "description": clean_html(description_html),
-                "url": url,
-                "source": "WeWorkRemotely",
-                "posted_at": parse_relative_date(pub_date),
-                "salary": extract_salary_heuristic(description_html)
-            })
-    except Exception as e:
-        logger.error(f"Error fetching WWR: {e}")
+    with nullcontext(client) if client is not None else FeedClient() as http:
+        for name in dict.fromkeys(selected):
+            result = {"status": "ok", "received": 0, "accepted": 0, "skipped": 0}
+            start_requests = http.requests
+            try:
+                for job in SOURCES[name](http, max_pages, now):
+                    result["received"] += 1
+                    if (not valid_job(job) or job.get("remote") is not True or
+                            not is_developer_role(job["title"], job.get("tags", []) + job.get("categories", []))):
+                        result["skipped"] += 1
+                        continue
+                    if name == "Himalayas" and not job.get("apply_url"):
+                        result["skipped"] += 1
+                        continue
+                    result["accepted"] += 1
+                    jobs.append(job)
+                if not result["accepted"]:
+                    result["status"] = "empty"
+            except PaginationLimit as exc:
+                result.update(status="capped", error=str(exc))
+            except Exception as exc:
+                result.update(status="partial" if result["accepted"] else "error", error=f"{type(exc).__name__}: {exc}")
+                logger.exception("Source failed: %s", name)
+            result["requests"] = http.requests - start_requests
+            report[name] = result
+            logger.info("%s: %s", name, result)
     return jobs
-
-def fetch_remotive() -> List[Dict]:
-    """Scrapes Remotive.com API for all software dev roles."""
-    jobs = []
-    try:
-        headers = {"User-Agent": USER_AGENT}
-        response = httpx.get("https://remotive.com/api/remote-jobs?category=software-dev", headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        
-        for item in data.get("jobs", []): 
-            jobs.append({
-                "title": item.get("title", ""),
-                "company": item.get("company_name", ""),
-                "description": clean_html(item.get("description", "")),
-                "url": item.get("url", ""),
-                "source": "Remotive",
-                "posted_at": parse_relative_date(item.get("publication_date", "")),
-                "salary": item.get("salary", "")
-            })
-    except Exception as e:
-        logger.error(f"Error fetching Remotive: {e}")
-    return jobs
-
-def fetch_remoteok() -> List[Dict]:
-    """Scrapes RemoteOK API for all latest development jobs."""
-    jobs = []
-    try:
-        headers = {"User-Agent": USER_AGENT}
-        response = httpx.get("https://remoteok.com/api", headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
-        
-        # RemoteOK returns legal terms in first item, skip it
-        for item in data[1:]: 
-            # Filter for dev jobs if tags are present
-            tags = item.get("tags", [])
-            is_dev = any(tag in ["dev", "software engineer", "frontend", "backend", "full stack"] for tag in tags)
-            
-            if is_dev:
-                # Build structured salary for RemoteOK
-                salary_str = ""
-                s_min = item.get("salary_min", 0)
-                s_max = item.get("salary_max", 0)
-                if s_min > 0 and s_max > 0:
-                    salary_str = f"${s_min:,} - ${s_max:,}"
-                elif s_min > 0:
-                    salary_str = f"${s_min:,}"
-
-                jobs.append({
-                    "title": item.get("position", ""),
-                    "company": item.get("company", ""),
-                    "description": clean_html(item.get("description", "")),
-                    "url": item.get("url", ""),
-                    "source": "RemoteOK",
-                    "posted_at": parse_relative_date(item.get("date", "")),
-                    "salary": salary_str
-                })
-    except Exception as e:
-        logger.error(f"Error fetching RemoteOK: {e}")
-    return jobs
-
-def fetch_workingnomads() -> List[Dict]:
-    """Scrapes Working Nomads development RSS feed."""
-    jobs = []
-    try:
-        headers = {"User-Agent": USER_AGENT}
-        response = httpx.get("https://www.workingnomads.com/jobs/feed/development", headers=headers, timeout=15, follow_redirects=True)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "xml")
-        items = soup.find_all("item")
-        
-        for item in items:
-            title = item.find("title").text if item.find("title") else ""
-            url = item.find("link").text if item.find("link") else ""
-            desc_html = item.find("description").text if item.find("description") else ""
-            pub_date = item.find("pubDate").text if item.find("pubDate") else ""
-            
-            jobs.append({
-                "title": title,
-                "company": "Working Nomads Listing",
-                "description": clean_html(desc_html),
-                "url": url,
-                "source": "WorkingNomads",
-                "posted_at": parse_relative_date(pub_date),
-                "salary": extract_salary_heuristic(desc_html)
-            })
-    except Exception as e:
-        logger.error(f"Error fetching WorkingNomads: {e}")
-    return jobs
-
-def fetch_jobright() -> List[Dict]:
-    """Scrapes JobRight.ai targeted feed."""
-    jobs = []
-    try:
-        url = "https://jobright.ai/remote-jobs/software-engineering/frontend-software-engineer?seniority=2"
-        headers = {"User-Agent": USER_AGENT}
-        response = httpx.get(url, headers=headers, timeout=20)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-        
-        for a_tag in soup.find_all("a", href=True):
-            if "/job/" in a_tag['href'] or "/jobs/" in a_tag['href']:
-                title_text = a_tag.get_text(separator=" ").strip()
-                if 5 < len(title_text) < 100:
-                    parent = a_tag.parent.parent if a_tag.parent else None
-                    desc = parent.get_text(separator="\n").strip() if parent else title_text
-                    link = "https://jobright.ai" + a_tag['href'] if a_tag['href'].startswith("/") else a_tag['href']
-                    
-                    jobs.append({
-                        "title": title_text.split("\n")[0][:80],
-                        "company": "Jobright Aggregator",
-                        "description": clean_html(desc),
-                        "url": link,
-                        "source": "JobRight",
-                        "posted_at": parse_relative_date("") # Usually brand new
-                    })
-    except Exception as e:
-        logger.error(f"Error fetching Jobright: {e}")
-        
-    unique_jobs = {j["url"]: j for j in jobs}.values()
-    return list(unique_jobs)
-
-def scrape_all_jobs() -> List[Dict]:
-    """Main entrypoint to aggregate jobs from all sources."""
-    logger.info("Starting job scraping with normalized date parsing...")
-    all_jobs = []
-    
-    batches = [
-        ("WeWorkRemotely", fetch_weworkremotely),
-        ("Remotive", fetch_remotive),
-        ("RemoteOK", fetch_remoteok),
-        ("WorkingNomads", fetch_workingnomads),
-        ("JobRight", fetch_jobright)
-    ]
-    
-    for name, fetch_func in batches:
-        try:
-            batch = fetch_func()
-            logger.info(f"Fetched {len(batch)} from {name}")
-            all_jobs.extend(batch)
-        except Exception as e:
-            logger.error(f"Critical failure fetching from {name}: {e}")
-    
-    logger.info(f"TOTAL JOBS SCRAPED: {len(all_jobs)}")
-    return all_jobs

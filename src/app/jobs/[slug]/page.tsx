@@ -1,118 +1,51 @@
-import { Job } from "@/lib/data";
-import { getJobsServer } from "@/lib/data-server";
-import { generateJobSlug } from "@/lib/utils";
-import JobDetailsClient from "./JobDetailsClient";
-import { Metadata } from "next";
-import { notFound } from "next/navigation";
-
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const jobs = await getJobsServer();
-  const job = jobs.find(j => generateJobSlug(j) === params.slug || j.id === params.slug);
-
-  if (!job) return { title: "Job Not Found | DevJobs" };
-
-  const title = `${job.title} at ${job.company} | DevJobs`;
-  const description = `Apply for the ${job.title} role at ${job.company}. Remote tech job updated daily on DevJobs.`;
-
-  return {
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/metadata';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { findJob, getAllJobs, toSummary } from '@/shared/data';
+import { breadcrumbSchema, jobSchema, serializeJsonLd } from '@/shared/seo';
+import JobDetails from '@/shared/JobDetails';
+export const revalidate = 3600;
+type Props = { params: Promise<{ slug: string }> };
+export function generateStaticParams() {
+  return getAllJobs()
+    .slice(0, 30)
+    .map((job) => ({ slug: job.slug }));
+}
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params,
+    job = findJob(slug);
+  if (!job) return { title: 'Job not found', robots: { index: false, follow: true } };
+  const title = `${job.title} at ${job.company}`;
+  const description =
+    `${title}. ${job.salary ? `Salary: ${job.salary}. ` : ''}${job.excerpt}`.slice(0, 160);
+  return pageMetadata({
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: "article",
-    },
-    alternates: {
-      canonical: `/jobs/${params.slug}`,
-    },
-  };
+    path: `/jobs/${job.slug}`,
+    type: 'article',
+    noindex: job.archived,
+  });
 }
-
-export default async function JobDetailsPage({ params }: { params: { slug: string } }) {
-  const jobs = await getJobsServer();
-  const job = jobs.find(j => generateJobSlug(j) === params.slug || j.id === params.slug);
-
-  if (!job) {
-    notFound();
-  }
-
-  // Calculate validThrough (60 days from posted_at)
-  const postedDate = new Date(job.posted_at || new Date());
-  const validThroughDate = new Date(postedDate.getTime() + 60 * 24 * 60 * 60 * 1000);
-
-  // Dynamic Location Detection for Google Jobs Geo-Targeting
-  const descLower = (job.description || "").toLowerCase() + " " + job.title.toLowerCase();
-  const applicantLocationRequirements: any[] = [];
-  
-  if (descLower.includes("us ") || descLower.includes("united states") || descLower.includes("usa ") || descLower.includes("america")) {
-    applicantLocationRequirements.push({ "@type": "Country", "name": "US" });
-  }
-  if (descLower.includes("uk ") || descLower.includes("united kingdom") || descLower.includes("london") || descLower.includes("britain")) {
-    applicantLocationRequirements.push({ "@type": "Country", "name": "GB" });
-  }
-  if (descLower.includes("canada") || descLower.includes("toronto") || descLower.includes("vancouver")) {
-    applicantLocationRequirements.push({ "@type": "Country", "name": "CA" });
-  }
-  if (descLower.includes("europe") || descLower.includes("eu ")) {
-    applicantLocationRequirements.push({ "@type": "Place", "name": "Europe" });
-  }
-  if (descLower.includes("latam") || descLower.includes("latin america")) {
-    applicantLocationRequirements.push({ "@type": "Place", "name": "Latin America" });
-  }
-
-  // If no specific regions detected, default to broad global reach
-  if (applicantLocationRequirements.length === 0) {
-    applicantLocationRequirements.push({ "@type": "Country", "name": "US" });
-    applicantLocationRequirements.push({ "@type": "Country", "name": "GB" });
-    applicantLocationRequirements.push({ "@type": "Country", "name": "CA" });
-  }
-
-  // Generate JSON-LD JobPosting Schema
-  const jsonLd = {
-    "@context": "https://schema.org/",
-    "@type": "JobPosting",
-    "title": job.title,
-    "description": job.description || "View full job description on our site.",
-    "datePosted": job.posted_at || new Date().toISOString(),
-    "validThrough": validThroughDate.toISOString(),
-    "employmentType": ["FULL_TIME"],
-    "hiringOrganization": {
-      "@type": "Organization",
-      "name": job.company,
-    },
-    "jobLocation": {
-      "@type": "Place",
-      "address": {
-        "@type": "PostalAddress",
-        "streetAddress": "Remote",
-        "addressLocality": "Remote",
-        "addressRegion": "Remote",
-        "postalCode": "00000",
-        "addressCountry": "US"
-      }
-    },
-    "jobLocationType": "TELECOMMUTE",
-    "applicantLocationRequirements": applicantLocationRequirements,
-    ...(job.salary ? {
-      "baseSalary": {
-        "@type": "MonetaryAmount",
-        "currency": "USD",
-        "value": {
-          "@type": "QuantitativeValue",
-          "value": job.salary.replace(/[^0-9.]/g, '') || "0",
-          "unitText": "YEAR"
-        }
-      }
-    } : {})
-  };
-
+export default async function JobPage({ params }: Props) {
+  const { slug } = await params,
+    job = findJob(slug);
+  if (!job) notFound();
+  if (slug !== job.slug) permanentRedirect(`/jobs/${job.slug}`);
+  const structuredData = [
+    breadcrumbSchema([
+      { name: 'Home', path: '/' },
+      { name: 'Remote jobs', path: '/jobs' },
+      { name: job.title, path: `/jobs/${job.slug}` },
+    ]),
+    jobSchema(job),
+  ].filter(Boolean);
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
-      <JobDetailsClient job={job} />
+      <JobDetails job={job} summary={toSummary(job)} />
     </>
   );
 }

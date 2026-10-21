@@ -1,44 +1,44 @@
-name: DevJobsHub Aggregator
-
+name: Refresh job listings
 on:
   schedule:
-    - cron: "0 0 * * *"
-  workflow_dispatch: # Allow manual trigger
-
+    - cron: '0 0,12 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: job-snapshot-update
+  cancel-in-progress: false
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      
+    timeout-minutes: 10
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - run: pip install -r agent/requirements.txt
+      - run: python -m unittest discover -s agent/tests -v
+      - run: python -m agent.main --report scrape-report.json
+      - name: Keep source health report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          python-version: '3.10'
-          cache: 'pip'
-
-      - name: Install Dependencies
+          name: scrape-report
+          path: scrape-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Commit a successful snapshot
         run: |
-          pip install -r agent/requirements.txt
-          playwright install chromium
-
-      - name: Run Aggregator
-        run: python -m agent.main
-        env:
-          PYTHONPATH: .
-
-      - name: Commit and Push Changes
-        run: |
-          git config --global user.name "GitHub Action [DevJobsHub]"
-          git config --global user.email "actions@github.com"
+          if git diff --quiet -- src/lib/jobs.json; then
+            echo 'No listing changes'
+            exit 0
+          fi
+          git config user.name 'DevJobs Bot'
+          git config user.email 'actions@users.noreply.github.com'
           git add src/lib/jobs.json
-          git commit -m "chore: auto-update jobs database [skip ci]" || echo "No changes to commit"
-          git push
+          git commit -m 'chore: refresh job listings'
+          git pull --rebase origin main
+          git push origin HEAD:main

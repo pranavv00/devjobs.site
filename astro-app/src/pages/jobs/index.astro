@@ -1,15 +1,20 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import JobsExplorerClient from '@/components/JobsExplorerClient';
-import { getJobs } from '@/lib/data';
-
-const jobs = getJobs();
+import JobsExplorer from '@shared/JobsExplorer';
+import { getActiveJobs, toSummary } from '@shared/data';
+const jobs = getActiveJobs().map(toSummary);
 ---
-
 <BaseLayout
-  title="Remote Tech Jobs | DevJobs"
-  description="Browse remote developer jobs. Filter by role, salary, and experience."
+  title="Remote developer jobs | DevJobs"
+  description="Search remote developer jobs by skill, experience, source, and published salary."
   canonical="/jobs"
 >
-  <JobsExplorerClient initialJobs={jobs} client:load />
+  <div class="page-content">
+    <div class="page-heading">
+      <p class="eyebrow">Good work is out there</p>
+      <h1>Find a role that fits.</h1>
+      <p>Remote opportunities, useful filters, and a clear path to the original listing.</p>
+    </div>
+    <JobsExplorer jobs={jobs} client:load />
+  </div>
 </BaseLayout>

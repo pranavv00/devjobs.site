@@ -1,12 +1,7 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import SavedPageClient from '@/components/SavedPageClient';
+import SavedJobs from '@shared/SavedJobs';
 ---
-
-<BaseLayout
-  title="Saved Jobs | DevJobs"
-  description="View and manage your saved remote developer jobs."
-  canonical="/saved"
->
-  <SavedPageClient client:load />
+<BaseLayout title="Saved jobs & applications | DevJobs" canonical="/saved" noindex>
+  <SavedJobs client:load />
 </BaseLayout>

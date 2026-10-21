@@ -1,202 +1,138 @@
-import logging
+"""Fetch and atomically update the single job snapshot used by both frontends."""
 import argparse
-import sys
 import json
+import logging
 import os
-import re
-from typing import List, Dict
-from dotenv import load_dotenv
+import tempfile
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from agent.normalize import canonical_key, clean_html, parse_relative_date, source_identifier, text, valid_job
+from agent.scraper import SOURCES, scrape_all_jobs
+from agent.config import DEFAULT_MAX_PAGES
 
-# Load environment variables
-load_dotenv()
+logger = logging.getLogger(__name__)
+JOBS_FILE = Path(__file__).resolve().parents[1] / "src/lib/jobs.json"
 
-from agent.scraper import scrape_all_jobs
 
-# Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger("DevJobsHub")
+def load_existing_jobs():
+    if not JOBS_FILE.exists():
+        return []
+    # A corrupt snapshot must fail loudly; never overwrite it with a partial run.
+    with JOBS_FILE.open(encoding="utf-8") as file:
+        jobs = json.load(file)
+    if not isinstance(jobs, list):
+        raise ValueError("The existing snapshot must contain a JSON array")
+    return jobs
 
-JOBS_FILE = "src/lib/jobs.json"
 
-def load_existing_jobs() -> List[Dict]:
-    """Loads existing jobs from jobs.json if it exists."""
-    if os.path.exists(JOBS_FILE):
-        try:
-            with open(JOBS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading {JOBS_FILE}: {e}")
-            return []
-    return []
-
-def save_jobs(jobs: List[Dict]):
-    """Saves the jobs list to jobs.json."""
+def save_jobs(jobs):
+    """Replace only after the entire JSON file is written and flushed."""
+    JOBS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
     try:
-        with open(JOBS_FILE, "w", encoding="utf-8") as f:
-            json.dump(jobs, f, indent=2, ensure_ascii=False)
-        logger.info(f"Successfully saved {len(jobs)} jobs to {JOBS_FILE}")
-    except Exception as e:
-        logger.error(f"Error saving {JOBS_FILE}: {e}")
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=JOBS_FILE.parent, suffix=".tmp", delete=False) as file:
+            temporary = Path(file.name)
+            json.dump(jobs, file, indent=2, ensure_ascii=False)
+            file.write("\n")
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, JOBS_FILE)
+    finally:
+        if temporary and temporary.exists():
+            temporary.unlink()
+    logger.info("Saved %s jobs to %s", len(jobs), JOBS_FILE)
 
-def format_job_locally(text: str) -> Dict:
-    """Bullet-first local parser that aggressively extracts clean roles."""
-    # 1. Block-to-Newline Conversion
-    # Ensure every block element and break becomes a clear newline
-    for tag in ['</li>', '</p>', '<br>', '<br/>', '</div>', '</h1>', '</h2>', '<h3>', '<h4>', '</ul>', '</div>']:
-        text = text.replace(tag, '\n')
-    
-    # Strip HTML and normalize
-    clean = re.sub(r'<[^>]*>', '', text)
-    clean = clean.replace('\r', '\n')
-    
-    # 2. Extract logical lines and deduplicate
-    lines = []
-    seen = set()
-    for l in clean.split('\n'):
-        line = l.strip()
-        if len(line) > 10 and line.lower() not in seen:
-            lines.append(line)
-            seen.add(line.lower())
 
-    # 3. Categorize into buckets
-    summary = []
-    responsibilities = []
-    requirements = []
-    
-    # Section keywords (headers to skip)
-    R_HEADERS = {"responsibilities", "what you'll do", "what you will do", "the role", "tasks", "core responsibilities"}
-    Q_HEADERS = {"requirements", "what you need", "qualifications", "who you are", "must have", "skills", "technical dna"}
-    
-    current_bucket = "summary"
-    
-    for line in lines:
-        low = line.lower()
-        
-        # Detect Section boundaries (and skip the header line itself)
-        is_resp = any(h in low for h in R_HEADERS) and len(line) < 40
-        is_req = any(h in low for h in Q_HEADERS) and len(line) < 40
-        
-        if is_resp:
-            current_bucket = "responsibilities"
+def is_recent(date_str, max_days=30, now=None):
+    now = now or datetime.now(timezone.utc)
+    parsed = parse_relative_date(date_str, now=now)
+    if not parsed:
+        return False
+    age = now - datetime.fromisoformat(parsed)
+    return timedelta(0) <= age <= timedelta(days=max_days)
+
+
+def merge_jobs(existing, incoming, now=None):
+    now = now or datetime.now(timezone.utc)
+    jobs = {}
+    source_ids = {}
+    for job in [*existing, *incoming]:
+        if not valid_job(job):
             continue
-        if is_req:
-            current_bucket = "requirements"
+        key = canonical_key(job["url"])
+        identity = (text(job.get("source")), source_identifier(job.get("source_id")))
+        previous_key = source_ids.get(identity, key) if identity[1] else key
+        previous = jobs.pop(previous_key, {})
+        posted_at = parse_relative_date(job.get("posted_at", ""), now=now)
+        # Preserve a known date when a source omits it during a later refresh.
+        if not posted_at:
+            posted_at = previous.get("posted_at", "")
+        updated_at = parse_relative_date(job.get("updated_at", ""), now=now) or previous.get("updated_at", "")
+        if not is_recent(posted_at or updated_at, now=now):
             continue
-            
-        # Clean bullet noise
-        clean_line = re.sub(r'^[•\-\*■»]\s*', '', line).strip()
-        
-        if current_bucket == "summary" and len(summary) < 3:
-            summary.append(clean_line)
-        elif current_bucket == "responsibilities" and len(responsibilities) < 12:
-            responsibilities.append(clean_line)
-        elif current_bucket == "requirements" and len(requirements) < 12:
-            requirements.append(clean_line)
+        expires = parse_relative_date(job.get("valid_through") or previous.get("valid_through"), now=now, allow_future=True)
+        if expires and datetime.fromisoformat(expires) <= now:
+            continue
+        normalized = {**previous, **job, "posted_at": posted_at}
+        if previous and previous_key == key:
+            normalized["url"] = previous["url"]  # Keep URL-derived saved-job IDs stable.
+        if updated_at:
+            normalized["updated_at"] = updated_at
+        if expires:
+            normalized["valid_through"] = expires
+        if job.get("last_seen_at"):
+            normalized["first_seen_at"] = previous.get("first_seen_at") or job.get("first_seen_at") or job["last_seen_at"]
+        normalized["description"] = clean_html(str(job.get("description") or previous.get("description") or ""))
+        # Remove obsolete pseudo-AI data. The frontend derives tags deterministically.
+        normalized.pop("ai_data", None)
+        normalized.pop("ai_processed", None)
+        jobs[key] = normalized
+        if identity[1]:
+            source_ids[identity] = key
+    return sorted(jobs.values(), key=lambda job: job.get("posted_at") or job.get("updated_at", ""), reverse=True)
 
-    # 4. Smart Fallback for flat descriptions
-    if not responsibilities and not requirements:
-        all_bits = [l for l in lines if len(l) > 35]
-        summary = all_bits[:2]
-        responsibilities = all_bits[2:8]
-        requirements = all_bits[8:14]
 
-    return {
-        "summary": " ".join(summary[:2]) if summary else "Remote engineering role available.",
-        "responsibilities": responsibilities[:8],
-        "requirements": requirements[:8],
-        "highlights": [l[:80] + "..." for l in (responsibilities + requirements)[:3]],
-        "tags": ["Remote", "Software"],
-        "is_ai_processed": False
+def process_all_jobs(test_mode=False, sources=None, max_pages=DEFAULT_MAX_PAGES, report_path=None):
+    existing = load_existing_jobs()
+    source_report = {}
+    incoming = scrape_all_jobs(sources=sources, max_pages=max_pages, report=source_report)
+    merged = merge_jobs(existing, incoming)
+    recent_incoming = merge_jobs([], incoming)
+    report = {
+        "finished_at": datetime.now(timezone.utc).isoformat(), "dry_run": test_mode,
+        "sources": source_report, "incoming": len(incoming), "recent_incoming": len(recent_incoming),
+        "snapshot_jobs": len(merged),
+        "coverage": {field: sum(bool(job.get(field)) for job in recent_incoming) for field in (
+            "description", "location", "applicant_countries", "salary", "salary_currency", "salary_period",
+            "employment_type", "tags", "company_logo", "valid_through", "sections",
+        )},
     }
-
-from datetime import datetime, timezone, timedelta
-
-def is_recent(date_str: str, max_days: int = 30) -> bool:
-    """Checks if a job's date string is within the allowed freshness window.
-    Supports ISO and common RSS formats."""
-    from agent.scraper import parse_relative_date
-    try:
-        # First, normalize the date string
-        iso_date = parse_relative_date(date_str)
-        job_date = datetime.fromisoformat(iso_date)
-        
-        if job_date.tzinfo is None:
-            job_date = job_date.replace(tzinfo=timezone.utc)
-        
-        now = datetime.now(timezone.utc)
-        diff = now - job_date
-        return diff.days <= max_days
-    except Exception as e:
-        logger.error(f"Error checking freshness for {date_str}: {e}")
-        return True # Default to keep if parsing fails
-
-def process_all_jobs(clean_all: bool = False, test_mode: bool = False):
-    """Main workflow to scrape, format, and purge old jobs."""
-    logger.info(f"Starting DevJobsHub Freshness Cycle... {'(TEST MODE)' if test_mode else ''} {'(FORCE CLEAN ALL)' if clean_all else ''}")
-    
-    # 1. Scrape new jobs
-    new_jobs = scrape_all_jobs()
-    
-    # 2. Load and Purge existing jobs
-    existing_jobs = load_existing_jobs()
-    active_jobs = [j for j in existing_jobs if is_recent(j.get("posted_at", ""))]
-    logger.info(f"Purged {len(existing_jobs) - len(active_jobs)} stale jobs from database.")
-    
-    job_map = {job["url"]: job for job in active_jobs if "url" in job}
-    
-    from agent.scraper import parse_relative_date
-    
-    # 3. Update database with new scraped data
-    for job in new_jobs:
-        url = job["url"]
-        if url in job_map:
-            # Update existing with fresh data (keeping already processed ai_data)
-            job_map[url].update(job)
-        else:
-            job_map[url] = job
-            
-    # 4. Format & Sanitize
-    processed_count = 0
-    target_all = list(job_map.values())
-    
-    for job in target_all:
-        url = job["url"]
-        
-        # Always normalize the date for consistency in database
-        job["posted_at"] = parse_relative_date(job.get("posted_at", ""))
-        
-        # Only keep if recent
-        if not is_recent(job["posted_at"]):
-            del job_map[url]
-            continue
-
-        # Format if new OR missing formatted data OR force cleaning
-        if "ai_data" not in job or clean_all:
-            if clean_all or "ai_data" not in job:
-                logger.info(f"Formatting: {job.get('title')}...")
-                job["ai_data"] = format_job_locally(job.get("description", ""))
-                job["ai_processed"] = False
-                processed_count += 1
-            
-    merged_jobs = list(job_map.values())
-    merged_jobs.sort(key=lambda x: x.get("posted_at", ""), reverse=True)
-            
-    logger.info(f"Processing complete. {len(merged_jobs)} active jobs in discovery feed.")
-    
-    # 4. Save
+    if report_path:
+        path = Path(report_path)
+        if path.resolve() == JOBS_FILE.resolve():
+            raise ValueError("The report must not overwrite the job snapshot")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    if not incoming:
+        raise RuntimeError("No source returned jobs; preserving the existing snapshot")
+    if not merged or not recent_incoming:
+        raise RuntimeError("No valid recent jobs were produced; preserving the existing snapshot")
+    logger.info("Prepared %s recent jobs (%s incoming records)", len(merged), len(incoming))
     if not test_mode:
-        save_jobs(merged_jobs)
-    else:
-        logger.info("[TEST MODE] Skipping database save.")
+        save_jobs(merged)
+    return merged
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="DevJobsHub Aggregator")
-    parser.add_argument("--clean-all", action="store_true", help="Re-format entire database locally")
-    parser.add_argument("--test", action="store_true", help="Run without saving to database")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    parser = argparse.ArgumentParser(description="DevJobs feed aggregator")
+    parser.add_argument("--test", action="store_true", help="Fetch and validate without changing the snapshot")
+    parser.add_argument("--source", action="append", choices=list(SOURCES), help="Run selected source(s); repeat to combine")
+    parser.add_argument("--max-pages", type=int, choices=range(1, 51), default=DEFAULT_MAX_PAGES, metavar="1-50", help="Page budget per paginated source (default: 10)")
+    parser.add_argument("--report", type=Path, help="Write a JSON source-health and data-coverage report")
+    parser.add_argument("--list-sources", action="store_true", help="Print configured sources and exit")
     args = parser.parse_args()
-
-    process_all_jobs(clean_all=args.clean_all, test_mode=args.test)
+    if args.list_sources:
+        print("\n".join(SOURCES))
+    else:
+        process_all_jobs(test_mode=args.test, sources=args.source, max_pages=args.max_pages, report_path=args.report)

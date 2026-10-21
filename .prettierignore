@@ -1,0 +1,12 @@
+node_modules
+.next
+astro-app/node_modules
+astro-app/dist
+astro-app/.astro
+src/lib/jobs.json
+package-lock.json
+astro-app/package-lock.json
+next-env.d.ts
+playwright-report
+test-results
+public/og-image.svg

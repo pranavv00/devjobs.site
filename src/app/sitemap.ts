@@ -1,43 +1,15 @@
-import { MetadataRoute } from 'next';
-import { getJobsServer } from '@/lib/data-server';
-import { generateJobSlug } from '@/lib/utils';
-
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const jobs = await getJobsServer();
-  const baseUrl = 'https://www.devjobs.site';
-
-  const jobUrls = jobs.map((job) => ({
-    url: `${baseUrl}/jobs/${generateJobSlug(job)}`,
-    lastModified: new Date(job.posted_at),
-    changeFrequency: 'daily' as const,
-    priority: 0.7,
-  }));
-
+import type { MetadataRoute } from 'next';
+import { getActiveJobs, toSummary } from '@/shared/data';
+import { CATEGORIES, absoluteUrl } from '@/shared/seo';
+import { DEFAULT_FILTERS, filterJobs } from '@/shared/jobs';
+export const revalidate = 3600;
+export default function sitemap(): MetadataRoute.Sitemap {
+  const jobs = getActiveJobs();
   return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/saved`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
-    ...jobUrls,
+    ...['/', '/jobs', '/about', '/privacy', '/terms'].map((path) => ({ url: absoluteUrl(path) })),
+    ...CATEGORIES.filter(
+      (c) => filterJobs(jobs.map(toSummary), { ...DEFAULT_FILTERS, query: c.query }).length,
+    ).map((c) => ({ url: absoluteUrl(`/q/${c.slug}`) })),
+    ...jobs.map((job) => ({ url: absoluteUrl(`/jobs/${job.slug}`), lastModified: job.posted_at })),
   ];
 }

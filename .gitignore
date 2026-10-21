@@ -31,3 +31,11 @@ yarn-error.log*
 
 # Vercel
 .vercel
+
+.env.*
+!.env.example
+*.tsbuildinfo
+.astro/
+playwright-report/
+test-results/
+scrape-report.json

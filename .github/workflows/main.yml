@@ -1,39 +1,51 @@
-name: AI Job Agent Daily Scraper
-
+name: Quality checks
 on:
-  schedule:
-    # Runs every 45 minutes
-    - cron: '*/45 * * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub UI
-
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  scrape-jobs:
+  verify:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-    
+    timeout-minutes: 20
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-        
-      - name: Setup Python
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          
-      - name: Install Dependencies
-        run: |
-          pip install -r agent/requirements.txt
-          playwright install chromium
-          # We only need chromium for now to save install time
-          
-      - name: Run Job Agent
-        env:
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: |
-          python -m agent.main --test
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/requirements.txt
+      - run: pip install -r agent/requirements.txt
+      - run: npm run check:python
+      - run: npm run verify:build
+  astro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            astro-app/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix astro-app
+      - run: npm run check --prefix astro-app
+      - run: npm run build --prefix astro-app

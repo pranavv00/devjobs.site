@@ -1,15 +1,11 @@
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# 🚀 DevJobsHub (pranavv00/devjobs.site) Configuration
-
-# List of RSS feeds / aggregator APIs to check
-WEWORKREMOTELY_URL = "https://weworkremotely.com/remote-jobs.rss"
-
-# Scraper Settings
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-# Frontend Integration (User's live data)
-GITHUB_RAW_JOBS_URL = "https://raw.githubusercontent.com/pranavv00/devjobs.site/main/jobs.json"
+"""Public feed configuration; no paid endpoints or credentials are used."""
+WEWORKREMOTELY_URLS = (
+    "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss",
+)
+USER_AGENT = "DevJobs/2.0 (+https://www.devjobs.site/about)"
+DEFAULT_MAX_PAGES = 10
+REQUEST_INTERVAL_SECONDS = 1.1
+MAX_RESPONSE_BYTES = 20 * 1024 * 1024
+MAX_DESCRIPTION_CHARACTERS = 60000
+MAX_RETRIES = 2

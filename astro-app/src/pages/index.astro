@@ -1,37 +1,33 @@
 ---
 import BaseLayout from '@/layouts/BaseLayout.astro';
-import Hero from '@/components/Hero.astro';
-import HomePageClient from '@/components/HomePageClient';
-import { getJobs } from '@/lib/data';
-
-const jobs = getJobs();
-const jobCount = jobs.length;
-
-// WebSite JSON-LD Schema
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "name": "DevJobs",
-  "url": "https://devjobs.site",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": {
-      "@type": "EntryPoint",
-      "urlTemplate": "https://devjobs.site/jobs?q={search_term_string}"
-    },
-    "query-input": "required name=search_term_string"
-  }
-};
+import Hero from '@shared/Hero';
+import JobsExplorer from '@shared/JobsExplorer';
+import { CategoryLinks, HowItWorks, FaqSection } from '@shared/DiscoveryContent';
+import { getActiveJobs, toSummary } from '@shared/data';
+import { serializeJsonLd, siteSchema, collectionSchema } from '@shared/seo';
+const jobs = getActiveJobs().map(toSummary);
+const sources = [...new Set(jobs.map((job) => job.source))];
 ---
-
-<BaseLayout
-  title="DevJobs | The Only Tech Job Tracker Built For You"
-  description="Stop using spreadsheets. Start tracking every remote tech job with a purpose-built tool. Get real roles filtered by AI."
-  canonical="/"
->
-  <main class="min-h-screen pb-32">
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
-    <Hero jobCount={jobCount} />
-    <HomePageClient initialJobs={jobs} client:load />
-  </main>
+<BaseLayout title="DevJobs — Remote developer jobs & application tracker" canonical="/">
+  <script
+    type="application/ld+json"
+    set:html={serializeJsonLd([
+      siteSchema,
+      collectionSchema('Remote developer jobs', '/', jobs),
+    ])}
+  />
+  <Hero jobs={jobs.slice(0, 2)} total={jobs.length} />
+  <div class="sources-strip">
+    <p>Good opportunities. Familiar sources.</p>
+    <div class="sources-list">
+      {sources.map((source) => (
+        <span>{source}</span>
+      ))}
+    </div>
+    <span class="source-note">Always linked to the source ↗</span>
+  </div>
+  <JobsExplorer jobs={jobs} compact client:load />
+  <CategoryLinks />
+  <HowItWorks />
+  <FaqSection />
 </BaseLayout>
