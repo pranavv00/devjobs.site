@@ -20,6 +20,7 @@
     "verify:build": "python3 scripts/verify_build.py"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "lucide-react": "^1.17.0",
     "next": "^16.3.4",
     "react": "^19.2.8",
