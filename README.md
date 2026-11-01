@@ -1,108 +1,340 @@
-# DevJobs
+<p align="center">
+  <img src="public/favicon.svg" alt="DevJobs logo" width="48" height="48" />
+</p>
 
-A remote job directory and browser-based application tracker. The primary app uses Next.js; an optional Astro static frontend uses the same components, business logic, stylesheet, assets, and job snapshot.
+<h1 align="center">DevJobs</h1>
 
-## Run locally
+<p align="center">
+  <strong>A fast, privacy-first remote developer job aggregator and application tracker.</strong>
+  <br />
+  Search 2,800+ roles from 8 established job boards — no sign-up required.
+</p>
 
-Use Node.js 22.12 or newer (Node 22 LTS is used in CI).
+<p align="center">
+  <a href="https://www.devjobs.site">Live Site</a> · <a href="#features">Features</a> · <a href="#getting-started">Getting Started</a> · <a href="#architecture">Architecture</a> · <a href="#api-reference">API</a> · <a href="#deployment">Deployment</a>
+</p>
+
+---
+
+## Features
+
+- **Unified search** — Query titles, companies, skills, and technologies across We Work Remotely, Remotive, Remote OK, Working Nomads, Jobicy, Himalayas, Arbeitnow, and Arbeitnow UK.
+- **Smart filtering** — Filter by location, experience level, employment type, salary disclosure, source board, posting date, and sort order. All filters are URL-shareable and work without JavaScript.
+- **Server-side pagination** — The homepage serves 12 listings at a time; the full directory paginates on the server with bounded payloads (~7 KB vs. ~1.8 MB for the full snapshot).
+- **Application tracker** — Save jobs, set statuses (saved → applied → interviewing → offer), drag to reorder, and export your shortlist to CSV. Everything stays in your browser's local storage — no account needed.
+- **Skill matching** — Enter your tech stack and get a match percentage for every listing, powered by word-boundary matching that won't confuse "Java" with "JavaScript."
+- **Related jobs** — Job detail pages suggest up to 3 related roles based on skill and role-term overlap, with deduplication and recency ranking.
+- **SEO-optimized** — Server-rendered pages, `JobPosting` structured data (with geographic eligibility), breadcrumbs, RSS feed, XML sitemap, Open Graph/Twitter cards, and category landing pages.
+- **Privacy-first analytics** — Vercel Web Analytics with URL sanitization, Do Not Track support, and opt-in engagement events that never transmit search text, saved skills, or destination URLs.
+- **Accessible** — Skip-to-content link, ARIA landmarks and labels, focus-visible styles, reduced-motion support, and automated axe accessibility testing.
+- **Dual frontend** — Primary Next.js app with ISR, plus an optional Astro static site sharing the same components, styles, and data.
+
+## Tech Stack
+
+| Layer             | Technology                                                                             |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| **Framework**     | [Next.js 16](https://nextjs.org) (App Router, React 19, TypeScript 5.9)                |
+| **Styling**       | Vanilla CSS with custom properties, responsive design, `prefers-reduced-motion`        |
+| **Icons**         | [Lucide React](https://lucide.dev)                                                     |
+| **Data pipeline** | Python 3.12 scraper with 8 source adapters, atomic JSON writes                         |
+| **Testing**       | Node.js test runner, [Playwright](https://playwright.dev) (browser), Python `unittest` |
+| **CI/CD**         | GitHub Actions — quality checks on push/PR, scheduled scraping at 00:00/12:00 UTC      |
+| **Analytics**     | [Vercel Web Analytics](https://vercel.com/analytics) (opt-in engagement events)        |
+| **Hosting**       | [Vercel](https://vercel.com) (primary), [Railway](https://railway.com) (supported)     |
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** ≥ 22.12 (Node 22 LTS)
+- **Python** ≥ 3.12 (for the scraper only)
+- No API keys, database credentials, or environment variables required
+
+### Installation
 
 ```sh
+git clone https://github.com/pranavv00/devjobs.site.git
+cd devjobs.site
 npm ci
-npm run dev
 ```
 
-Open http://localhost:3000. No API keys or database credentials are needed. Job data comes from the checked-in snapshot, not a live request from the browser.
+### Development
 
 ```sh
-npm run check       # ESLint, strict TypeScript, regression tests
-npm run build
-npm run start
+npm run dev          # Start dev server at http://localhost:3000
 ```
 
-For browser tests, install Playwright’s browser once:
+Job data comes from the checked-in snapshot (`src/lib/jobs.json`) — no live API calls from the browser.
+
+### Quality Checks
+
+```sh
+npm run check        # ESLint (zero warnings) + TypeScript (strict) + 21 regression tests
+npm run build        # Optimized production build
+npm run verify:build # Validate 38 HTML pages, sitemap, RSS, metadata, and size budgets
+npm run format:check # Prettier formatting verification
+```
+
+### Browser Tests
 
 ```sh
 npx playwright install chromium
 npm run test:browser
 ```
 
-An existing browser executable can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`, either in the environment or an ignored `.env.test.local`. CI uses Playwright’s bundled browser. Browser tests cover search/history, combined filters, saves, cross-tab updates, statuses, CSV export, storage failures, mobile flows, accessibility, and metadata endpoints.
+Covers search/history, combined filters, saves, cross-tab sync, statuses, CSV export, storage failures, mobile flows, accessibility (axe), and metadata endpoints.
+
+### Python Scraper Tests
+
+```sh
+pip install -r agent/requirements.txt
+npm run check:python   # 33 unit tests — all source adapters, pagination, retries, safety
+```
 
 ## Architecture
 
-- `src/app/`: Next.js routes, metadata, API, error boundaries, RSS, and sitemap.
-- `src/shared/`: framework-neutral React components, typed job data, filtering, storage, and SEO helpers. Import `data.ts` only from server/build code; never from client components.
-- `src/app/globals.css`: shared responsive design, focus styles, and accessibility preferences.
-- `src/lib/jobs.json`: the single source snapshot. Full descriptions remain on detail pages. The Next.js homepage and directory send 12 visible job summaries at a time; directory filtering and URL pagination run on the server. The browser-local matching tool and optional Astro explorer use the complete compact summary catalogue.
-- `agent/`: Python ingestion, validation, sanitization, and atomic snapshot writes.
-- `astro-app/`: optional static frontend. Run from this monorepo, with the parent source included.
-- `tests/`, `agent/tests/`: regression coverage and browser scenarios.
-
-Search matches titles, companies, detected technologies, and short summaries. Skills use word boundaries, so “AI” does not match “email,” and “Java” does not match “JavaScript.” Experience/type classification prefers source fields and falls back to text heuristics. Salary keeps source-supplied currency and pay period; currencies and hourly/annual rates are not guessed or combined.
-
-Saved jobs, statuses, and skills use local storage. Legacy saved records are migrated when read. Reads tolerate invalid JSON, writes report storage failures, and changes synchronize between tabs. The application board has a status dropdown as well as drag handles. CSV exports escape spreadsheet formulas.
-
-## Python scraper
-
-Use Python 3.12 (3.10+ syntax is supported).
-
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r agent/requirements.txt
-python -m unittest discover -s agent/tests -v
-python -m agent.main --test  # fetch and validate; no write
-python -m agent.main         # update src/lib/jobs.json
+```
+devjobs.site/
+├── src/
+│   ├── app/                      # Next.js App Router
+│   │   ├── page.tsx              # Homepage — hero, search, 12 featured jobs
+│   │   ├── jobs/
+│   │   │   ├── page.tsx          # Directory — server-filtered, paginated
+│   │   │   └── [slug]/page.tsx   # Job detail — ISR, structured data, related jobs
+│   │   ├── q/[keyword]/page.tsx  # Category landing pages (React, Python, etc.)
+│   │   ├── matches/page.tsx      # Skill matching (client-side)
+│   │   ├── saved/page.tsx        # Application tracker board
+│   │   ├── api/jobs/route.ts     # Public REST API
+│   │   ├── feed.xml/route.ts     # RSS 2.0 feed
+│   │   ├── sitemap.ts            # Dynamic XML sitemap
+│   │   ├── robots.ts             # robots.txt
+│   │   └── components/           # Page-specific client components
+│   ├── shared/                   # Framework-neutral React components & logic
+│   │   ├── jobs.ts               # Types, filtering, matching, slug generation
+│   │   ├── data.ts               # Normalization, validation, job database
+│   │   ├── storage.ts            # localStorage with migration & cross-tab sync
+│   │   ├── seo.ts                # Structured data, RSS, metadata, categories
+│   │   ├── sources.ts            # Source registry & syndication rules
+│   │   ├── pagination.ts         # Bounded server pagination
+│   │   ├── related-jobs.ts       # Skill/role relevance ranking
+│   │   ├── analytics.ts          # Privacy-first event tracking
+│   │   └── *.tsx                 # Shared UI components
+│   └── lib/
+│       └── jobs.json             # Bundled job snapshot (~2,885 listings)
+├── agent/                        # Python data pipeline
+│   ├── main.py                   # CLI entry point
+│   ├── scraper.py                # 8 source adapters with pagination
+│   ├── normalize.py              # Validation, sanitization, deduplication
+│   ├── config.py                 # Source configuration
+│   ├── http.py                   # HTTP client with retries & rate limiting
+│   └── tests/                    # 33 contract-based unit tests
+├── astro-app/                    # Optional static Astro frontend
+├── tests/
+│   ├── jobs.test.ts              # 21 data/normalization regression tests
+│   ├── seo.test.ts               # Structured data & SEO validation
+│   └── browser/app.spec.ts       # Playwright E2E browser tests
+├── .github/workflows/
+│   ├── main.yml                  # CI: lint, typecheck, test, build, verify
+│   └── scrape.yml                # Scheduled: scrape → test → commit → push
+├── docs/                         # Audit reports, scraper guide
+└── scripts/verify_build.py       # Post-build validation (HTML, sitemap, budgets)
 ```
 
-The scraper reads We Work Remotely, Remotive, Remote OK, Working Nomads, Jobicy, Himalayas, Arbeitnow, and Arbeitnow UK. It captures full descriptions, source tags, locations, employment types, salary units, seniority, expiry, and application links where supplied. Requests use pacing, bounded pagination, and transient retries. Source IDs and canonical URL keys deduplicate records; partial failures preserve recent existing data; snapshot writes are atomic. Complete failure or an absence of valid recent incoming records preserves the old snapshot.
+### Data Flow
 
-Use `--list-sources`, repeatable `--source`, `--max-pages` (default 10), and `--report scrape-report.json` to control and inspect a run. See [the scraper guide](docs/SCRAPER.md) for source endpoints, field semantics, policy restrictions, limitations, and verification. The scheduled workflow retains source-health reports as artifacts.
-
-The scheduled workflow runs at 00:00 and 12:00 UTC. It tests the pipeline and commits successful updates. Verify that these commits trigger your hosting provider’s production builds. Both frontends read a bundled snapshot: rebuilding is required for new scraped jobs. Next.js revalidation updates freshness classification, not the underlying snapshot.
-
-## Astro frontend
-
-From the repository root:
-
-```sh
-npm ci
-npm ci --prefix astro-app
-npm run check --prefix astro-app
-npm run build --prefix astro-app
-npm run preview --prefix astro-app
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    8 Job Board APIs                          │
+│  WWR · Remotive · RemoteOK · WorkingNomads · Jobicy         │
+│  Himalayas · Arbeitnow · Arbeitnow UK                       │
+└────────────────────────┬────────────────────────────────────┘
+                         │ RSS / JSON (twice daily via GitHub Actions)
+                         ▼
+              ┌─────────────────────┐
+              │   Python Scraper    │
+              │  Validate, sanitize │
+              │  deduplicate, merge │
+              └──────────┬──────────┘
+                         │ Atomic write
+                         ▼
+              ┌─────────────────────┐
+              │  src/lib/jobs.json  │
+              │   ~2,885 listings   │
+              └──────────┬──────────┘
+                         │ git commit + push
+                         ▼
+              ┌─────────────────────┐
+              │  Vercel / Railway   │
+              │  Production build   │
+              │  ISR revalidation   │
+              └──────────┬──────────┘
+                         │
+           ┌─────────────┼─────────────┐
+           ▼             ▼             ▼
+       Homepage       /jobs API     RSS Feed
+     (12 listings)   (paginated)   (100 items)
 ```
 
-Astro shares `../src/shared`, `../src/app/globals.css`, and `../public`; do not deploy `astro-app` without its parent source. Its data and expiry state are frozen at build time, so schedule successful rebuilds at least daily. Choose one frontend for the production domain.
+### Key Design Decisions
 
-## API
+- **No database** — The job snapshot is a committed JSON file. Builds are reproducible, and the scraper's atomic writes guarantee consistency.
+- **Server-first rendering** — Filtering, pagination, and search run on the server. The homepage GET form works without JavaScript.
+- **Source-truthful data** — Salary, location, and employment type come from source API fields, never guessed. `JobPosting` markup requires verified geographic eligibility.
+- **Syndication rules** — Remotive and Himalayas listings are excluded from the public API, RSS, and structured data per their distribution policies. They remain fully browsable on the website.
+- **Local-only persistence** — Saved jobs, statuses, and skills use `localStorage` with validation, migration, and cross-tab synchronization. No user data leaves the browser.
 
-`GET /api/jobs?q=React&salary=1&page=1&limit=24` returns:
+## API Reference
+
+### `GET /api/jobs`
+
+Returns paginated, filtered job listings (excludes sources with syndication restrictions).
+
+```
+GET /api/jobs?q=React&location=US&salary=1&experience=senior&page=1&limit=24
+```
+
+**Parameters:**
+
+| Param        | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `q`          | Search query (titles, companies, skills)         |
+| `location`   | Country/region text filter                       |
+| `experience` | `junior`, `mid`, `senior`, `lead`, `intern`      |
+| `type`       | `FULL_TIME`, `PART_TIME`, `CONTRACTOR`, `INTERN` |
+| `days`       | Max age in days (`7`, `14`, `30`)                |
+| `salary`     | `1` to show only jobs with disclosed salary      |
+| `source`     | Filter by source board name                      |
+| `sort`       | `company` for A–Z; default is newest first       |
+| `page`       | Page number (default: 1)                         |
+| `limit`      | Results per page (default: 24, max: 100)         |
+
+**Response:**
 
 ```json
-{ "jobs": [], "total": 0, "page": 1, "limit": 24 }
+{
+  "jobs": [{ "id": "...", "title": "...", "company": "...", ... }],
+  "total": 1234,
+  "page": 1,
+  "limit": 24
+}
 ```
 
-Results use compact summaries; `limit` is capped at 100. Sources that prohibit onward distribution (Remotive and Himalayas) are excluded from this public API and RSS; their listings remain visible on the website. Supported filters are `q`, `location`, `experience`, `type`, `days`, `salary`, `source`, and `sort`. This replaces the old unbounded array response; update any external consumers accordingly.
+### RSS Feed
 
-## Search and discovery
+```
+GET /feed.xml
+```
 
-The canonical origin is `https://www.devjobs.site`, centralized in `src/shared/seo.ts` (and the Astro hosting configuration). Pages include unique metadata, a real social image, source attribution, clear FAQs, and descriptive internal links. The sitemap excludes personal pages, empty categories, and archived jobs. Job details use stable identifiers; old title slugs and IDs redirect to canonical URLs.
+The 100 most recent syndicatable listings in RSS 2.0 format.
 
-JobPosting structured data is emitted only when source policy permits it and the listing has a known publication date, a description, current eligibility, and explicit applicant countries supplied by the source. Source update dates are labeled separately. Complete source salary bounds/currency/period and employment types are included when available; unknown values, addresses, and deadlines are omitted. Listings without sufficient geographic evidence still have readable detail pages and breadcrumbs. This is intentional: truthful markup is more useful than invented eligibility.
+## Python Scraper
 
-AEO/GEO improvements follow the same foundations as search: useful server-rendered content, clear entities, source provenance, readable answers, and accurate metadata. They do not guarantee rankings or AI citations. See [Google’s AI guidance](https://developers.google.com/search/docs/appearance/ai-features) and [JobPosting requirements](https://developers.google.com/search/docs/appearance/structured-data/job-posting).
+The data pipeline aggregates listings from 8 source APIs using public RSS and JSON endpoints — no paid APIs, logins, or browser automation.
+
+```sh
+python -m agent.main --test                    # Dry run: fetch & validate, no write
+python -m agent.main                           # Update src/lib/jobs.json
+python -m agent.main --list-sources            # Show configured sources
+python -m agent.main --source Jobicy --test    # Test a single source
+python -m agent.main --report scrape-report.json  # Generate health report
+```
+
+**Reliability features:**
+
+- Connection reuse with ≥1.1s inter-request pacing per host
+- Bounded pagination (default 10 pages, configurable up to 50)
+- Transient retry with `Retry-After` support (max 2 retries, 30s cap)
+- Response size limit (20 MiB decompressed)
+- Per-source isolation — one source failure doesn't affect others
+- Atomic snapshot writes — the old file is preserved until the new one is complete
+- Complete failure protection — the previous snapshot survives when all sources fail
+
+See [docs/SCRAPER.md](docs/SCRAPER.md) for source endpoints, field semantics, and policy details.
+
+## Search & Discovery
+
+### SEO
+
+- Unique `<title>`, `<meta description>`, and canonical URLs per page
+- `JobPosting` structured data for eligible listings with verified country data
+- `CollectionPage` + `ItemList` schema on directory and category pages
+- `BreadcrumbList` schema on job detail pages
+- Dynamic XML sitemap excluding personal, archived, and empty-category pages
+- RSS 2.0 feed with proper XML escaping
+- Open Graph and Twitter Card metadata with social images
+- `noindex` on filtered results, saved jobs, and skill matching pages
+- Legacy slug/ID redirects via `permanentRedirect`
+- Homepage query parameter redirects (`/?q=React` → `/jobs?q=React`)
+
+### Category Pages
+
+8 pre-rendered technology/role landing pages: React, Python, Frontend, Backend, Node.js, React Native, Data Analyst, and Technical Lead.
 
 ## Deployment
 
-The root `vercel.json` selects Next.js. Railway uses `npm run start` and `/` for its health check. Set the deployment’s Node version to 22, run `npm ci` and `npm run build`, and use one canonical production domain. Redirect any alternative domain to `www.devjobs.site` at the hosting layer.
+### Vercel (Primary)
 
-The optional Astro app produces `astro-app/dist`. Its Vercel settings apply basic security headers; the Next.js app configures these headers itself. The CSP blocks objects, framing, and foreign base URLs. It is not a strict nonce-based script CSP.
+The root `vercel.json` configures Next.js. Set Node.js to version 22.
 
-After deploying, verify external source links, rich results for listings with explicit countries, social cards, mobile interactions, and Search Console sitemap coverage. Confirm that the scheduled scraper is enabled and build failures are monitored. Read [the November SEO and performance audit](docs/devjobs.site-audit/FULL-AUDIT-REPORT.md) and [deployment plan](docs/devjobs.site-audit/ACTION-PLAN.md) for this checkout’s changes and remaining verification limits. The earlier [production audit](docs/PRODUCTION_AUDIT.md) is a historical record.
+```sh
+npm ci && npm run build
+```
 
-## Engagement measurement
+### Railway
 
-The Next.js app uses Vercel Web Analytics for page visits. Search parameters and fragments are removed from analytics URLs, and Do Not Track is respected. Optional real-interaction events cover search, filtering, job-detail clicks, successful saves/unsaves, and external application clicks. Set `NEXT_PUBLIC_ENABLE_ENGAGEMENT_ANALYTICS=true` at build time only on a Vercel plan supporting custom events; the default is disabled. No search text, selected skills, destination URL, or job ID is sent in custom event properties. The static Astro frontend does not enable this integration.
+Uses `npm run start` with `/` as the health check endpoint. See `railway.json`.
 
-Vercel counts single-page sessions as bounces even when custom events occur. Compare application intent and discovery progression alongside bounce rate; events do not represent completed applications or hires. The supplied seven-day baseline was 504 visitors, 652 page views, and 86% bounce.
+### Environment Variables
+
+| Variable                                  | Required | Description                                                                                                   |
+| ----------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_ENABLE_ENGAGEMENT_ANALYTICS` | No       | Set to `true` to enable custom interaction events (requires Vercel plan with custom events). Default: `false` |
+
+### Post-Deployment Checklist
+
+- [ ] Verify external source links resolve correctly
+- [ ] Test rich results with [Google's Rich Results Test](https://search.google.com/test/rich-results)
+- [ ] Confirm social cards render on Twitter/LinkedIn/Slack
+- [ ] Test mobile search and filter interactions
+- [ ] Verify XML sitemap in Search Console
+- [ ] Confirm the scheduled scraper workflow is enabled
+- [ ] Monitor build failures from scraper commits
+
+## Astro Frontend (Optional)
+
+A static alternative frontend sharing the same components, styles, and data:
+
+```sh
+npm ci --prefix astro-app
+npm run build --prefix astro-app     # Generates astro-app/dist
+npm run preview --prefix astro-app
+```
+
+> **Note:** The Astro app reads a frozen snapshot at build time. Schedule daily rebuilds to keep listings fresh. Deploy only one frontend per production domain.
+
+## Testing Summary
+
+| Suite                  | Count     | Coverage                                                                                           |
+| ---------------------- | --------- | -------------------------------------------------------------------------------------------------- |
+| **Node.js regression** | 21 tests  | Normalization, filtering, matching, pagination, RSS, schema, storage, CSV, redistribution rules    |
+| **Python scraper**     | 33 tests  | All 8 source adapters, pagination, retries, gzip, salary parsing, HTML safety, merge behavior      |
+| **Playwright browser** | ~15 specs | Search/history, saves, cross-tab sync, statuses, CSV export, mobile flows, accessibility, metadata |
+| **Build verification** | 1 script  | 38 HTML pages, 2,888 sitemap URLs, RSS validity, metadata, semantic structure, size budgets        |
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Run `npm run check` and `npm run check:python` before committing
+4. Ensure `npm run build && npm run verify:build` passes
+5. Open a Pull Request
+
+## License
+
+This project is open source. See the repository for license details.
+
+---
+
+<p align="center">
+  Built with Next.js, React, and Python · <a href="https://www.devjobs.site">devjobs.site</a>
+</p>
