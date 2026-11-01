@@ -15,6 +15,7 @@ import { getActiveJobs, getAllJobs, normalizeJobs, plainText, toSummary } from '
 import { jobSchema, rssFeed, serializeJsonLd } from '../src/shared/seo';
 import { validateSavedJobs, validateSkills } from '../src/shared/storage';
 import { GET as getJobsApi } from '../src/app/api/jobs/route';
+import { paginate, JOBS_PER_PAGE } from '../src/shared/pagination';
 
 const NOW = Date.parse('2026-10-21T12:00:00Z');
 const raw = {
@@ -134,13 +135,44 @@ test('CSV protects formula cells and quotes commas and line breaks', () => {
   assert.equal(csvCell('a,b\nc'), '"a,b\nc"');
   assert.equal(csvCell(' +cmd'), '"\' +cmd"');
 });
-test('real snapshot produces unique URLs and compact browser summaries', () => {
+test('real snapshot produces unique URLs and bounded discovery payloads', () => {
   const jobs = getAllJobs();
   assert.ok(jobs.length > 0);
   assert.equal(new Set(jobs.map((job) => job.slug)).size, jobs.length);
-  const summaries = getActiveJobs().map(toSummary);
+  const summaries = paginate(getActiveJobs(), '1').items.map(toSummary);
   const bytes = Buffer.byteLength(JSON.stringify(summaries));
-  assert.ok(bytes < 1_000_000, `search data too large: ${bytes} bytes`);
+  assert.ok(summaries.length <= JOBS_PER_PAGE);
+  assert.ok(bytes < 25_000, `discovery data too large: ${bytes} bytes`);
+});
+
+test('location filters preserve country evidence and round-trip with other filters', () => {
+  const jobs = normalizeJobs(
+    [
+      { ...raw, location: 'United States, Canada' },
+      { ...raw, url: 'https://example.com/jobs/2', location: 'India' },
+      { ...raw, url: 'https://example.com/jobs/3' },
+    ],
+    NOW,
+  ).map(toSummary);
+  const filters = { ...DEFAULT_FILTERS, location: 'Canada', query: 'React', salary: true };
+  assert.equal(filterJobs(jobs, filters, NOW).length, 1);
+  assert.equal(filterJobs(jobs, { ...filters, location: 'US' }, NOW).length, 0);
+  assert.deepEqual(filtersFromParams(filtersToParams(filters)), filters);
+  assert.equal(
+    filtersFromParams(new URLSearchParams({ location: 'x'.repeat(200) })).location.length,
+    100,
+  );
+});
+
+test('pagination is bounded, stable, and handles invalid or out-of-range pages', () => {
+  const items = Array.from({ length: 29 }, (_, i) => i);
+  assert.deepEqual(paginate(items, '2').items, items.slice(12, 24));
+  assert.deepEqual(paginate(items, '100000').items, items.slice(24));
+  for (const page of ['NaN', '-1', '0', '1.5', 'Infinity', undefined]) {
+    assert.equal(paginate(items, page).page, 1);
+  }
+  assert.equal(paginate([], '2').page, 1);
+  assert.deepEqual(paginate([], '2').items, []);
 });
 
 test('API validates pagination and returns summaries without source descriptions', async () => {

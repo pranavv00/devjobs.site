@@ -98,6 +98,7 @@ export function matchScore(job: JobSummary, skills: string[]): number {
 }
 export interface JobFilters {
   query: string;
+  location: string;
   experience: string;
   employmentType: string;
   days: string;
@@ -107,6 +108,7 @@ export interface JobFilters {
 }
 export const DEFAULT_FILTERS: JobFilters = {
   query: '',
+  location: '',
   experience: '',
   employmentType: '',
   days: '',
@@ -117,6 +119,7 @@ export const DEFAULT_FILTERS: JobFilters = {
 export function filtersFromParams(params: URLSearchParams): JobFilters {
   return {
     query: (params.get('q') || '').slice(0, 150),
+    location: (params.get('location') || '').trim().slice(0, 100),
     experience: ['junior', 'mid', 'senior', 'lead', 'intern'].includes(
       params.get('experience') || '',
     )
@@ -142,6 +145,7 @@ export function filtersFromParams(params: URLSearchParams): JobFilters {
 export function filtersToParams(filters: JobFilters): URLSearchParams {
   const params = new URLSearchParams();
   if (filters.query.trim()) params.set('q', filters.query.trim());
+  if (filters.location.trim()) params.set('location', filters.location.trim());
   if (filters.experience) params.set('experience', filters.experience);
   if (filters.employmentType) params.set('type', filters.employmentType);
   if (filters.days) params.set('days', filters.days);
@@ -162,6 +166,7 @@ export function filterJobs(
       const age = now - Date.parse(job.posted_at);
       return (
         terms.every((term) => matchesTerm(text, term)) &&
+        (!filters.location || matchesTerm(job.location, filters.location)) &&
         (!filters.experience || job.experience === filters.experience) &&
         (!filters.employmentType || job.employmentType === filters.employmentType) &&
         (!filters.source || job.source === filters.source) &&

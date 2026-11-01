@@ -36,6 +36,8 @@ export default defineConfig({
     }),
   ],
   vite: {
+    // The static frontend has no Vercel Analytics provider.
+    define: { 'process.env.NEXT_PUBLIC_ENABLE_ENGAGEMENT_ANALYTICS': '"false"' },
     resolve: {
       dedupe: ['react', 'react-dom'],
       alias: { '@shared': fileURLToPath(new URL('../src/shared', import.meta.url)) },

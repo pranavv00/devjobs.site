@@ -16,7 +16,26 @@ export function Privacy() {
         Like other websites, opening DevJobs sends requests to its hosting provider. Those requests
         can include an IP address, browser information, and the page address. Search filters are
         included in the URL so they can be shared; avoid putting private information into searches
-        or shared links. This version does not load advertising or third-party analytics scripts.
+        or shared links. DevJobs uses Vercel Web Analytics to understand page visits and improve the
+        site. Search parameters and URL fragments are removed from analytics events before sending.
+        DevJobs does not load advertising scripts.
+      </p>
+      <h2>Usage analytics</h2>
+      <p>
+        Vercel Web Analytics collects information about visits, such as the page, referring site,
+        device, and country. When engagement analytics is enabled, DevJobs also records actions such
+        as searching, saving a job, and opening an application link. These events do not include
+        your search text, saved skills, application materials, or the destination URL. A saved-job
+        event records the action and source board, not your shortlist. DevJobs honors the browser’s
+        Do Not Track setting for these analytics. Read{' '}
+        <a
+          href="https://vercel.com/docs/analytics/privacy-policy"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Vercel’s analytics privacy documentation
+        </a>{' '}
+        for more information.
       </p>
       <h2>External websites</h2>
       <p>
@@ -36,7 +55,7 @@ export function Privacy() {
         </a>
         . Do not post personal application information in a public issue.
       </p>
-      <p className="updated">Last updated: October 21, 2026</p>
+      <p className="updated">Last updated: November 1, 2026</p>
     </article>
   );
 }

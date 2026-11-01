@@ -10,7 +10,7 @@ export function CategoryLinks() {
         </div>
       </div>
       <div className="category-grid">
-        {CATEGORIES.slice(0, 6).map((c) => (
+        {CATEGORIES.map((c) => (
           <a href={`/q/${c.slug}`} key={c.slug}>
             {c.title}
             <ArrowUpRight size={18} aria-hidden="true" />

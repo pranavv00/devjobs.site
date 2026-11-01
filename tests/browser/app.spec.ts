@@ -34,7 +34,7 @@ test('search, combined filters, reset and history work', async ({ page }) => {
   await page.locator('#job-search').fill('this-job-does-not-exist-123456');
   await page.getByRole('button', { name: 'Search jobs' }).click();
   await expect(page.getByText('No jobs match these filters.')).toBeVisible();
-  await page.getByRole('button', { name: 'Reset all filters' }).click();
+  await page.getByRole('link', { name: 'Reset all filters' }).click();
   await expect(page.locator('.job-card')).toHaveCount(12);
   await expect(page.getByLabel('Salary listed')).not.toBeChecked();
   await page.goBack();
@@ -94,11 +94,13 @@ test('skills and detail pages work on mobile', async ({ page }) => {
     'rel',
     'noopener noreferrer',
   );
-  await page.getByRole('button', { name: /^Save / }).click();
-  await expect(page.getByRole('button', { name: /^Unsave / })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await page
+    .locator('.apply-panel')
+    .getByRole('button', { name: /^Save / })
+    .click();
+  await expect(
+    page.locator('.apply-panel').getByRole('button', { name: /^Unsave / }),
+  ).toHaveAttribute('aria-pressed', 'true');
 });
 test('public pages pass automated accessibility checks', async ({ page }) => {
   for (const url of ['/', '/jobs', '/about', '/saved', '/matches']) {
@@ -134,4 +136,62 @@ test('feeds, sitemap, noindex, missing routes and security headers are correct',
   const api = await (await request.get('/api/jobs?limit=2')).json();
   expect(api.jobs).toHaveLength(2);
   expect(api.jobs[0].description).toBeUndefined();
+});
+
+test('homepage search is visible on mobile and navigates to matching results', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const input = page.locator('#hero-search');
+  const box = await input.boundingBox();
+  expect(box && box.y + box.height < 844).toBeTruthy();
+  await input.fill('React');
+  await page.getByRole('button', { name: 'Search jobs' }).click();
+  await expect(page).toHaveURL(/\/jobs\?q=React/);
+  await expect(page.locator('#job-search')).toHaveValue('React');
+});
+
+test('search and crawlable pagination work without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await page.goto('http://127.0.0.1:3000/jobs');
+  const first = await page.locator('.job-card h3 a').first().getAttribute('href');
+  await page.getByRole('link', { name: 'Next jobs' }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page.locator('.job-card h3 a').first()).not.toHaveAttribute('href', first!);
+  await page.locator('#job-location').fill('Canada');
+  await page.getByRole('button', { name: 'Search jobs' }).click();
+  await expect(page).toHaveURL(/location=Canada/);
+  await expect(page.locator('#results-heading')).toContainText('Canada');
+  await context.close();
+});
+
+test('discovery HTML stays bounded and legacy identifiers redirect', async ({ request }) => {
+  const html = await (await request.get('/')).text();
+  expect(Buffer.byteLength(html)).toBeLessThan(300_000);
+  const { getActiveJobs } = await import('../../src/shared/data');
+  const { legacyJobSlug } = await import('../../src/shared/jobs');
+  const job = getActiveJobs()[0];
+  for (const alias of [job.id, legacyJobSlug(job)]) {
+    const response = await request.get(`/jobs/${alias}`, { maxRedirects: 0 });
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe(`/jobs/${job.slug}`);
+  }
+});
+
+test('clearing filters discards unsubmitted drafts and filter updates preserve focus', async ({
+  page,
+}) => {
+  await page.goto('/jobs?salary=1');
+  await page.locator('#job-search').fill('unsubmitted search');
+  await page.locator('#job-location').fill('unsubmitted location');
+  await page.getByRole('link', { name: 'Clear all filters' }).click();
+  await expect(page).toHaveURL(/\/jobs$/);
+  await expect(page.locator('#job-search')).toHaveValue('');
+  await expect(page.locator('#job-location')).toHaveValue('');
+  await page.locator('.search-filters summary').click();
+  const experience = page.getByLabel('Experience', { exact: true });
+  await experience.focus();
+  await experience.selectOption('senior');
+  await expect(page).toHaveURL(/experience=senior/);
+  await expect(experience).toBeFocused();
 });

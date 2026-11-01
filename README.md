@@ -33,7 +33,7 @@ An existing browser executable can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTA
 - `src/app/`: Next.js routes, metadata, API, error boundaries, RSS, and sitemap.
 - `src/shared/`: framework-neutral React components, typed job data, filtering, storage, and SEO helpers. Import `data.ts` only from server/build code; never from client components.
 - `src/app/globals.css`: shared responsive design, focus styles, and accessibility preferences.
-- `src/lib/jobs.json`: the single source snapshot. Full descriptions remain on detail pages; browser search uses compact summaries.
+- `src/lib/jobs.json`: the single source snapshot. Full descriptions remain on detail pages. The Next.js homepage and directory send 12 visible job summaries at a time; directory filtering and URL pagination run on the server. The browser-local matching tool and optional Astro explorer use the complete compact summary catalogue.
 - `agent/`: Python ingestion, validation, sanitization, and atomic snapshot writes.
 - `astro-app/`: optional static frontend. Run from this monorepo, with the parent source included.
 - `tests/`, `agent/tests/`: regression coverage and browser scenarios.
@@ -83,7 +83,7 @@ Astro shares `../src/shared`, `../src/app/globals.css`, and `../public`; do not 
 { "jobs": [], "total": 0, "page": 1, "limit": 24 }
 ```
 
-Results use compact summaries; `limit` is capped at 100. Sources that prohibit onward distribution (Remotive and Himalayas) are excluded from this public API and RSS; their listings remain visible on the website. Supported filters are `q`, `experience`, `type`, `days`, `salary`, `source`, and `sort`. This replaces the old unbounded array response; update any external consumers accordingly.
+Results use compact summaries; `limit` is capped at 100. Sources that prohibit onward distribution (Remotive and Himalayas) are excluded from this public API and RSS; their listings remain visible on the website. Supported filters are `q`, `location`, `experience`, `type`, `days`, `salary`, `source`, and `sort`. This replaces the old unbounded array response; update any external consumers accordingly.
 
 ## Search and discovery
 
@@ -99,4 +99,10 @@ The root `vercel.json` selects Next.js. Railway uses `npm run start` and `/` for
 
 The optional Astro app produces `astro-app/dist`. Its Vercel settings apply basic security headers; the Next.js app configures these headers itself. The CSP blocks objects, framing, and foreign base URLs. It is not a strict nonce-based script CSP.
 
-After deploying, verify external source links, rich results for listings with explicit countries, social cards, mobile interactions, and Search Console sitemap coverage. Confirm that the scheduled scraper is enabled and build failures are monitored. Read [the audit and verification record](docs/PRODUCTION_AUDIT.md) for this checkout’s remaining verification limits.
+After deploying, verify external source links, rich results for listings with explicit countries, social cards, mobile interactions, and Search Console sitemap coverage. Confirm that the scheduled scraper is enabled and build failures are monitored. Read [the November SEO and performance audit](docs/devjobs.site-audit/FULL-AUDIT-REPORT.md) and [deployment plan](docs/devjobs.site-audit/ACTION-PLAN.md) for this checkout’s changes and remaining verification limits. The earlier [production audit](docs/PRODUCTION_AUDIT.md) is a historical record.
+
+## Engagement measurement
+
+The Next.js app uses Vercel Web Analytics for page visits. Search parameters and fragments are removed from analytics URLs, and Do Not Track is respected. Optional real-interaction events cover search, filtering, job-detail clicks, successful saves/unsaves, and external application clicks. Set `NEXT_PUBLIC_ENABLE_ENGAGEMENT_ANALYTICS=true` at build time only on a Vercel plan supporting custom events; the default is disabled. No search text, selected skills, destination URL, or job ID is sent in custom event properties. The static Astro frontend does not enable this integration.
+
+Vercel counts single-page sessions as bounces even when custom events occur. Compare application intent and discovery progression alongside bounce rate; events do not represent completed applications or hires. The supplied seven-day baseline was 504 visitors, 652 page views, and 86% bounce.

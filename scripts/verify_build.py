@@ -30,6 +30,9 @@ for path in pages:
 
 home = BeautifulSoup((BUILD / 'index.html').read_text(), 'html.parser')
 assert len(home.select('.job-card')) == 12, 'Home must serve real listings before JavaScript'
+assert (BUILD / 'index.html').stat().st_size < 300_000, 'Homepage HTML exceeds discovery budget'
+assert home.find('form', attrs={'action': '/jobs', 'method': 'get'}), 'Search must work without JavaScript'
+assert 'Remote developer jobs' in home.h1.get_text(), 'Homepage must identify its subject clearly'
 assert len(home.select('.faq-section details')) == 5
 for name in ['saved', 'matches']:
     soup = BeautifulSoup((BUILD / f'{name}.html').read_text(), 'html.parser')

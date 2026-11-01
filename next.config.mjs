@@ -12,6 +12,17 @@ const securityHeaders = [
 const config = {
   poweredByHeader: false,
   reactStrictMode: true,
+  async redirects() {
+    // Preserve shared searches created by the former homepage explorer.
+    return ['q', 'location', 'experience', 'type', 'days', 'salary', 'source', 'sort'].map(
+      (key) => ({
+        source: '/',
+        has: [{ type: 'query', key }],
+        destination: '/jobs',
+        permanent: true,
+      }),
+    );
+  },
   async headers() {
     return [{ source: '/(.*)', headers: securityHeaders }];
   },

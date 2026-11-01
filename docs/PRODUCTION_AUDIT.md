@@ -2,6 +2,8 @@
 
 Date: October 21, 2026.
 
+Historical record. For the current implementation and checks, see [the November 1 SEO and performance audit](devjobs.site-audit/FULL-AUDIT-REPORT.md).
+
 This checkout now has a shared application layer, a refreshed responsive interface, safer ingestion and browser storage, and rebuilt discovery metadata. The Next.js production build passes. This is a substantial hardening pass, not a claim that every deployment condition has been verified.
 
 ## Findings and changes

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ArrowUpRight, Bookmark, MapPin } from 'lucide-react';
 import { displayDate, matchScore, type JobSummary } from './jobs';
 import { useSavedJobs, useSkills } from './storage';
+import { trackEvent } from './analytics';
 
 export function SaveButton({ job, showLabel = false }: { job: JobSummary; showLabel?: boolean }) {
   const { savedJobs, toggleSave } = useSavedJobs();
@@ -15,11 +16,11 @@ export function SaveButton({ job, showLabel = false }: { job: JobSummary; showLa
         className={showLabel ? 'button button-secondary' : 'icon-button save-button'}
         aria-label={`${saved ? 'Unsave' : 'Save'} ${job.title}`}
         aria-pressed={saved}
-        onClick={() =>
-          setError(
-            toggleSave(job) ? '' : 'Could not save. Browser storage may be full or disabled.',
-          )
-        }
+        onClick={() => {
+          const success = toggleSave(job);
+          setError(success ? '' : 'Could not save. Browser storage may be full or disabled.');
+          if (success) trackEvent(saved ? 'unsave_job' : 'save_job', { source: job.source });
+        }}
       >
         <Bookmark size={18} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
         {showLabel && (saved ? 'Saved to your jobs' : 'Save this job')}
@@ -48,7 +49,12 @@ export default function JobCard({ job }: { job: JobSummary }) {
         <SaveButton job={job} />
       </div>
       <h3>
-        <a href={`/jobs/${job.slug}`}>{job.title}</a>
+        <a
+          href={`/jobs/${job.slug}`}
+          onClick={() => trackEvent('view_job', { source: job.source })}
+        >
+          {job.title}
+        </a>
       </h3>
       <p className="job-location">
         <MapPin size={14} aria-hidden="true" />
@@ -68,6 +74,7 @@ export default function JobCard({ job }: { job: JobSummary }) {
           href={`/jobs/${job.slug}`}
           className="job-arrow"
           aria-label={`View ${job.title} at ${job.company}`}
+          onClick={() => trackEvent('view_job', { source: job.source })}
         >
           <ArrowUpRight size={19} aria-hidden="true" />
         </a>

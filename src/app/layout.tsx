@@ -3,7 +3,7 @@ import './globals.css';
 import Navigation from '@/shared/Navigation';
 import SiteFooter from '@/shared/SiteFooter';
 import { SITE_URL, SITE_DESCRIPTION, absoluteUrl } from '@/shared/seo';
-import { Analytics } from '@vercel/analytics/next';
+import SiteAnalytics from './components/SiteAnalytics';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -53,7 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <SiteFooter />
-        <Analytics />
+        <SiteAnalytics />
       </body>
     </html>
   );

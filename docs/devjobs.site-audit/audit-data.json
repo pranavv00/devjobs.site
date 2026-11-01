@@ -1,0 +1,169 @@
+{
+  "domain": "https://www.devjobs.site",
+  "date": "2026-11-01",
+  "status": "implemented locally; not deployed",
+  "summary": {
+    "health_score": null,
+    "business_type": "Remote developer job directory and browser-local application tracker",
+    "top_findings": [
+      "Excessive initial catalogue data",
+      "Search below decorative hero",
+      "Missing location filter",
+      "Legacy aliases blocked by static route policy",
+      "Limited onward discovery"
+    ],
+    "quick_wins": [
+      "Homepage GET search",
+      "12-record server pagination",
+      "Early apply action",
+      "Related roles",
+      "Accurate analytics disclosure"
+    ]
+  },
+  "user_supplied_baseline": {
+    "source": "Vercel screenshot",
+    "environment": "Production",
+    "timeframe": "Last 7 Days",
+    "visitors": 504,
+    "pageviews": 652,
+    "bounce_rate_percent": 86,
+    "device_breakdown_available": false,
+    "referrer_breakdown_available": false
+  },
+  "measurements": {
+    "active_jobs": 2875,
+    "full_summary_json_bytes": 1836581,
+    "initial_summary_json_bytes": 7027,
+    "summary_bytes_reduction_percent": 99.62,
+    "homepage_html_bytes": 78751,
+    "homepage_rsc_bytes": 29094,
+    "bytes_are": "uncompressed artifact sizes; not Core Web Vitals or measured page-load time",
+    "lcp": null,
+    "inp": null,
+    "cls": null,
+    "lighthouse_score": null,
+    "audit_start_summary_json_bytes": 1842977,
+    "audit_start_active_jobs": 2885,
+    "note": "Ten listings aged out during the audit; final active/sitemap counts are lower than the initial baseline."
+  },
+  "categories": [
+    {
+      "name": "Technical SEO",
+      "score": null,
+      "what_works": [
+        "Canonical and social metadata",
+        "Bounded sitemap with current jobs",
+        "Noindex for personal/archive/search variants"
+      ],
+      "findings": [
+        {
+          "title": "Legacy aliases were unreachable",
+          "severity": "High",
+          "description": "dynamicParams=false blocked aliases before redirect logic.",
+          "recommendation": "Implemented dynamic route resolution; confirm production redirect status."
+        }
+      ]
+    },
+    {
+      "name": "Performance",
+      "score": null,
+      "what_works": [
+        "12 visible job records on landing and directory",
+        "Native GET search and crawlable pagination",
+        "24 recent detail prerenders; remaining details on demand"
+      ],
+      "findings": [
+        {
+          "title": "Catalogue serialized on entry",
+          "severity": "High",
+          "description": "1836581 bytes of summaries before; 7027 bytes for first page after.",
+          "recommendation": "Implemented bounded data flow. Measure mobile field performance after deployment."
+        }
+      ]
+    },
+    {
+      "name": "Search experience",
+      "score": null,
+      "what_works": [
+        "Search-first homepage",
+        "Location filtering",
+        "Early application action",
+        "Related jobs and eight category links"
+      ],
+      "findings": []
+    },
+    {
+      "name": "Measurement",
+      "score": null,
+      "what_works": [
+        "Optional real-interaction events",
+        "Query/fragment redaction",
+        "Do Not Track"
+      ],
+      "findings": [
+        {
+          "title": "Aggregate bounce cannot identify cause",
+          "severity": "Medium",
+          "description": "Screenshot has no device or referral segmentation; application intent can coexist with a single-page session.",
+          "recommendation": "Compare segmented conversion and discovery metrics after deployment."
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "eslint": "passed",
+    "typescript": "passed",
+    "node_tests": 21,
+    "python_tests": 33,
+    "next_production_build": "passed",
+    "static_html_validation": "passed (38 pages)",
+    "sitemap_unique_urls": 2888,
+    "astro_typecheck": "passed (3 existing hints)",
+    "astro_build": "passed (2901 pages)",
+    "browser_tests": "blocked: localhost EPERM and Chromium SIGABRT",
+    "skill_installation": "blocked: GitHub DNS unavailable; elevated network access rejected",
+    "deployment": "not performed"
+  },
+  "action_plan": {
+    "phases": [
+      {
+        "name": "Implemented",
+        "timeframe": "Local checkout",
+        "items": [
+          "Bounded discovery data",
+          "Search and responsive UI",
+          "Location filtering",
+          "Legacy routing fix",
+          "Related-job and category discovery",
+          "Optional engagement events"
+        ]
+      },
+      {
+        "name": "Release verification",
+        "timeframe": "Before deployment",
+        "items": [
+          "Run browser suite in unrestricted CI",
+          "Review mobile/desktop visuals",
+          "Confirm canonical redirects and source applications",
+          "Deploy existing Vercel project"
+        ]
+      },
+      {
+        "name": "Measurement",
+        "timeframe": "Comparable seven-day windows",
+        "items": [
+          "Segment bounce by route/device/referrer/country",
+          "Compare detail progression, saves and application intent",
+          "Collect field Core Web Vitals",
+          "Verify scheduled scraper deployments"
+        ]
+      }
+    ]
+  },
+  "artifacts": {
+    "report": "FULL-AUDIT-REPORT.md",
+    "action_plan": "ACTION-PLAN.md",
+    "findings_dir": "findings/",
+    "screenshots_dir": null
+  }
+}

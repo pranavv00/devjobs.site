@@ -38,6 +38,7 @@ export default function JobsExplorer({
   const results = useMemo(() => filterJobs(jobs, filters), [jobs, filters]);
   const sources = useMemo(() => [...new Set(jobs.map((job) => job.source))].sort(), [jobs]);
   const activeCount = [
+    filters.location,
     filters.experience,
     filters.employmentType,
     filters.days,

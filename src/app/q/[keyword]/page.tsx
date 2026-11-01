@@ -3,9 +3,10 @@ import { pageMetadata } from '@/lib/metadata';
 import { notFound } from 'next/navigation';
 import { getActiveJobs, toSummary } from '@/shared/data';
 import { DEFAULT_FILTERS, filterJobs } from '@/shared/jobs';
-import { CATEGORIES, collectionSchema, serializeJsonLd } from '@/shared/seo';
+import { CATEGORIES, breadcrumbSchema, collectionSchema, serializeJsonLd } from '@/shared/seo';
 import JobCard from '@/shared/JobCard';
 import { CategoryLinks } from '@/shared/DiscoveryContent';
+import CategoryGuide from '@/shared/CategoryGuide';
 export const revalidate = 3600;
 export const dynamicParams = false;
 export function generateStaticParams() {
@@ -51,7 +52,13 @@ export default async function CategoryPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: serializeJsonLd(collectionSchema(category.title, `/q/${category.slug}`, jobs)),
+          __html: serializeJsonLd([
+            collectionSchema(category.title, `/q/${category.slug}`, jobs),
+            breadcrumbSchema([
+              { name: 'Remote jobs', path: '/jobs' },
+              { name: category.title, path: `/q/${category.slug}` },
+            ]),
+          ]),
         }}
       />
       <p className="results-summary">
@@ -76,6 +83,7 @@ export default async function CategoryPage({ params }: Props) {
           Explore all matching jobs ↗
         </a>
       </div>
+      <CategoryGuide slug={category.slug} />
       <CategoryLinks />
     </div>
   );

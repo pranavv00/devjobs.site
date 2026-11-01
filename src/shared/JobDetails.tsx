@@ -1,6 +1,7 @@
-import { ArrowLeft, ArrowUpRight, MapPin } from 'lucide-react';
+import { ArrowLeft, MapPin } from 'lucide-react';
 import { displayDate, type Job, type JobSummary } from './jobs';
 import { SaveButton } from './JobCard';
+import ApplyLink from './ApplyLink';
 
 export default function JobDetails({ job, summary }: { job: Job; summary: JobSummary }) {
   const paragraphs = job.description
@@ -40,6 +41,18 @@ export default function JobDetails({ job, summary }: { job: Job; summary: JobSum
             </span>
           ))}
         </div>
+        <div className="detail-quick-facts">
+          {job.salary && <span className="salary">{job.salary}</span>}
+          <span>
+            {job.dateKind === 'updated' ? 'Updated' : 'Posted'} {displayDate(job.posted_at)}
+          </span>
+          <ApplyLink
+            href={job.archived ? job.url : job.applyUrl || job.url}
+            source={job.source}
+            archived={job.archived}
+            label={job.archived ? 'Check availability at source' : 'Apply at source'}
+          />
+        </div>
       </header>
       <div className="detail-layout">
         <section className="description-panel" aria-labelledby="description-heading">
@@ -65,15 +78,11 @@ export default function JobDetails({ job, summary }: { job: Job; summary: JobSum
           <div className="apply-panel">
             <h2>Your next move?</h2>
             <p>Read the full listing and apply through {job.source}.</p>
-            <a
-              className="button button-primary"
+            <ApplyLink
               href={job.archived ? job.url : job.applyUrl || job.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {job.archived ? 'Check original listing' : 'View & apply'}
-              <ArrowUpRight size={18} aria-hidden="true" />
-            </a>
+              source={job.source}
+              archived={job.archived}
+            />
             <span className="external-note">Opens the source’s application page in a new tab</span>
             <SaveButton job={summary} showLabel />
             <dl>
