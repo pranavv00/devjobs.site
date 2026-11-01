@@ -19,6 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params,
     job = findJob(slug);
   if (!job) notFound();
+  if (slug !== job.slug) permanentRedirect(`/jobs/${job.slug}`);
   const title = `${job.title} at ${job.company}`;
   const description =
     `${title}. ${job.salary ? `Salary: ${job.salary}. ` : ''}${job.excerpt}`.slice(0, 160);

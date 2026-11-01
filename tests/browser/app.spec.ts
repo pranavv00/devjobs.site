@@ -28,7 +28,7 @@ test('home has useful SSR content, metadata and no horizontal overflow', async (
 test('search, combined filters, reset and history work', async ({ page }) => {
   await page.goto('/jobs?q=React');
   await expect(page.locator('#job-search')).toHaveValue('React');
-  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await page.locator('.filter-toggle').click();
   await page.getByLabel('Salary listed').check();
   await expect(page).toHaveURL(/salary=1/);
   await page.locator('#job-search').fill('this-job-does-not-exist-123456');

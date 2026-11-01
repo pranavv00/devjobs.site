@@ -114,7 +114,7 @@ export default function JobSearch({
           requirements.
         </p>
         <details className="search-filters" open={advanced || undefined}>
-          <summary className="filter-toggle">
+          <summary className="filter-toggle" role="button">
             <SlidersHorizontal size={16} aria-hidden="true" />
             Filters
           </summary>
@@ -128,6 +128,7 @@ export default function JobSearch({
             <label>
               Experience
               <select
+                aria-label="Experience"
                 name="experience"
                 value={fields.experience}
                 onChange={(event) => edit({ experience: event.target.value })}
@@ -143,6 +144,7 @@ export default function JobSearch({
             <label>
               Job type
               <select
+                aria-label="Job type"
                 name="type"
                 value={fields.employmentType}
                 onChange={(event) => edit({ employmentType: event.target.value })}
@@ -160,6 +162,7 @@ export default function JobSearch({
             <label>
               Posted or updated
               <select
+                aria-label="Posted or updated"
                 name="days"
                 value={fields.days}
                 onChange={(event) => edit({ days: event.target.value })}
@@ -173,6 +176,7 @@ export default function JobSearch({
             <label>
               Source
               <select
+                aria-label="Source"
                 name="source"
                 value={fields.source}
                 onChange={(event) => edit({ source: event.target.value })}
@@ -185,6 +189,7 @@ export default function JobSearch({
             </label>
             <label className="checkbox-label">
               <input
+                aria-label="Salary listed"
                 type="checkbox"
                 name="salary"
                 value="1"
